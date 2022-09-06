@@ -6,7 +6,9 @@ import 'package:kraken/kraken.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
-void main() => runApp(const MyApp(accessPoint: 1));
+void main() {
+  runApp(const MyApp(accessPoint: 1));
+}
 
 @pragma("vm:entry-point")
 void showKraken() {
@@ -20,11 +22,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: accessPoint == 1 ? 'Flutter View Demo' : 'Kraken View Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: accessPoint == 1 ? const MyHomePage(title: 'Flutter Demo Home Page') : const MyKrakenWidget(),
+      home: accessPoint == 1 ? const MyHomePage(title: 'Flutter View Demo') : const MyKrakenWidget(),
       navigatorObservers: [routeObserver],
     );
   }
@@ -69,8 +71,8 @@ class MyKrakenState extends State<MyKrakenWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        width: 300,
-        height: 300,
+        // width: 300,
+        // height: 300,
         color: Colors.deepPurpleAccent,
         child: kraken,
       ),
