@@ -7,9 +7,6 @@ import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
 import com.example.nativemixflutter.databinding.ActivityMainBinding
 import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterActivity
@@ -19,7 +16,7 @@ import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 
 
-class MainActivity : AppCompatActivity(), LifecycleObserver {
+class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "main"
@@ -39,9 +36,19 @@ class MainActivity : AppCompatActivity(), LifecycleObserver {
         initView()
         initFlutter()
         initClickHandler()
+    }
 
+    override fun onResume() {
+        super.onResume()
         // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
-        lifecycle.addObserver(this)
+        flutterEngine.lifecycleChannel.appIsResumed()
+    }
+
+    override fun onDestroy() {
+        flutterView?.detachFromFlutterEngine()
+        krakenFlutterView?.detachFromFlutterEngine()
+        flutterEngine.destroy()
+        super.onDestroy()
     }
 
     private fun initView() {
@@ -123,12 +130,6 @@ class MainActivity : AppCompatActivity(), LifecycleObserver {
                 FlutterActivity.createDefaultIntent(this)
             )
         }
-    }
-
-
-    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    private fun resumeActivity() {
-        flutterEngine.lifecycleChannel.appIsResumed()
     }
 
 }

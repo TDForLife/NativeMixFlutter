@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:kraken/devtools.dart';
 import 'package:kraken/kraken.dart';
@@ -7,11 +8,17 @@ import 'package:kraken/kraken.dart';
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
 void main() {
+  if (kDebugMode) {
+    print('EntryPoint Default');
+  }
   runApp(const MyApp(accessPoint: 1));
 }
 
 @pragma("vm:entry-point")
 void showKraken() {
+  if (kDebugMode) {
+    print('EntryPoint showKraken');
+  }
   runApp(const MyApp(accessPoint: 2));
 }
 
