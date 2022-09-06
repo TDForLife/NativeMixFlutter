@@ -23,7 +23,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var flutterEngine: FlutterEngine
+    private lateinit var flutterViewEngine: FlutterEngine
+    private lateinit var krakenViewEngine: FlutterEngine
     private lateinit var mountViewContainer: FrameLayout
     private var flutterView: FlutterView? = null
     private var krakenFlutterView: FlutterView? = null
@@ -41,13 +42,15 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
-        flutterEngine.lifecycleChannel.appIsResumed()
+        flutterViewEngine.lifecycleChannel.appIsResumed()
+        krakenViewEngine.lifecycleChannel.appIsResumed()
     }
 
     override fun onDestroy() {
         flutterView?.detachFromFlutterEngine()
         krakenFlutterView?.detachFromFlutterEngine()
-        flutterEngine.destroy()
+        flutterViewEngine.destroy()
+        krakenViewEngine.destroy()
         super.onDestroy()
     }
 
@@ -56,7 +59,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initFlutter() {
-        flutterEngine = FlutterEngine(applicationContext)
+        flutterViewEngine = FlutterEngine(applicationContext)
+        krakenViewEngine = FlutterEngine(applicationContext)
     }
 
     private fun initClickHandler() {
@@ -69,7 +73,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             // 2. FlutterEngine 执行自定义 EntryPoint
-            flutterEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
+            flutterViewEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
 
             // 3. 将 FlutterView 添加到 Android View 容器
             mountViewContainer.removeAllViews()
@@ -81,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             mountViewContainer.addView(flutterView, layoutParams)
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            flutterView?.attachToFlutterEngine(flutterEngine)
+            flutterView?.attachToFlutterEngine(flutterViewEngine)
         }
 
         // Kraken view click handler
@@ -104,7 +108,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             // 2. FlutterEngine 执行自定义 EntryPoint
-            flutterEngine.dartExecutor.executeDartEntrypoint(
+            krakenViewEngine.dartExecutor.executeDartEntrypoint(
                 DartEntrypoint(
                     FlutterInjector.instance().flutterLoader().findAppBundlePath(),
                     "showKraken"
@@ -114,14 +118,14 @@ class MainActivity : AppCompatActivity() {
             // 3. 将 FlutterView 添加到 Android View 容器
             mountViewContainer.removeAllViews()
             val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(
-                600,
-                600 // FrameLayout.LayoutParams.WRAP_CONTENT
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT // FrameLayout.LayoutParams.WRAP_CONTENT
             )
             layoutParams.gravity = Gravity.CENTER
             mountViewContainer.addView(krakenFlutterView, layoutParams)
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            krakenFlutterView?.attachToFlutterEngine(flutterEngine)
+            krakenFlutterView?.attachToFlutterEngine(krakenViewEngine)
         }
 
         binding.routerToFlutterPageBtn.setOnClickListener {
