@@ -84,6 +84,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        initClickMyFlutterView()
+        initClickMyKrakenView()
+    }
+
+    private fun initClickMyFlutterView() {
         // val viewWidth = FrameLayout.LayoutParams.WRAP_CONTENT
         // val viewHeight = FrameLayout.LayoutParams.WRAP_CONTENT
         val viewWidth = 600
@@ -91,7 +96,7 @@ class MainActivity : AppCompatActivity() {
 
         // Flutter view click handler
         binding.mountFlutterViewBtn.setOnClickListener {
-            // 1. 初始化 Flutter View
+            // 1. 初始化 Flutter View & 双向调用通道
             if (flutterView == null) {
                 flutterView = FlutterView(this)
                 flutterView!!.setBackgroundColor(Color.GREEN)
@@ -125,16 +130,20 @@ class MainActivity : AppCompatActivity() {
 
             // 3. 将 FlutterView 添加到 Android View 容器
             mountViewContainer.removeAllViews()
-            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(
-                viewWidth,
-                viewHeight
-            )
+            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(viewWidth, viewHeight)
             layoutParams.gravity = Gravity.CENTER
             mountViewContainer.addView(flutterView, layoutParams)
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
             flutterView?.attachToFlutterEngine(flutterViewEngine)
         }
+
+    }
+
+    private fun initClickMyKrakenView() {
+        val autoViewSize = false
+        val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
+        val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
 
         // Kraken view click handler
         binding.mountKrakenViewBtn.setOnClickListener {
@@ -165,10 +174,7 @@ class MainActivity : AppCompatActivity() {
 
             // 3. 将 FlutterView 添加到 Android View 容器
             mountViewContainer.removeAllViews()
-            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT // FrameLayout.LayoutParams.WRAP_CONTENT
-            )
+            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(viewWidth, viewHeight)
             layoutParams.gravity = Gravity.CENTER
             mountViewContainer.addView(krakenFlutterView, layoutParams)
 
@@ -183,5 +189,4 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
-
 }
