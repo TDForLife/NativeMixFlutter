@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initClickMyFlutterView() {
-        val autoViewSize = false
+        val autoViewSize = true
         val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
         val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
 
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             // 1. 初始化 Flutter View & 双向调用通道
             if (flutterView == null) {
                 flutterView = FlutterView(this)
-                flutterView!!.setBackgroundColor(Color.GREEN)
+                flutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
 
                 // Native MethodHandler 接收处理 Flutter 的方法调用
                 val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
             // 1. 初始化 Flutter View
             if (krakenFlutterView == null) {
                 krakenFlutterView = FlutterView(this)
-                krakenFlutterView!!.setBackgroundColor(Color.CYAN)
+                krakenFlutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
                 krakenFlutterView?.addOnFirstFrameRenderedListener(object :
                     FlutterUiDisplayListener {
                     override fun onFlutterUiDisplayed() {

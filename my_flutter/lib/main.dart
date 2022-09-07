@@ -25,6 +25,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // return accessPoint == 1 ? const MyFlutterView(title: 'MyFlutterView') : const MyKrakenView();
     return MaterialApp(
       title: accessPoint == 1 ? 'MyFlutterView' : 'MyKrakenView',
       home: accessPoint == 1 ? const MyFlutterView(title: 'MyFlutterView') : const MyKrakenView(),

@@ -14,13 +14,13 @@ const jsMethodName = 'onJSCall';
 
 class MyKrakenView extends StatefulWidget {
   const MyKrakenView({Key? key}) : super(key: key);
+
   @override
   State<MyKrakenView> createState() => MyKrakenState();
 }
 
 // https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81
 class MyKrakenState extends State<MyKrakenView> {
-
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
   static const krakenMethodChannel = MethodChannel(krakenMethodChannelName);
 
@@ -47,10 +47,9 @@ class MyKrakenState extends State<MyKrakenView> {
     javaScriptChannel.onMethodCall = (String method, dynamic arguments) async {
       print('MyKrakenView receive JS method - $method and args is $arguments');
       Completer completer = Completer<String>();
-      // Timer(const Duration(seconds: 1), () {
-      // });
       completer.complete('Hi JS, I am KrakenView');
-      nativeMethodChannel.invokeMethod(nativeMethodName, 'I am Native,I discover : \nkraken method was invoked by JS');
+      nativeMethodChannel.invokeMethod(nativeMethodName,
+          'I am Native,I discover : \nkraken method was invoked by JS');
       return completer.future;
     };
   }
@@ -79,13 +78,9 @@ class MyKrakenState extends State<MyKrakenView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        // width: 300,
-        // height: 300,
-        color: Colors.deepPurpleAccent,
-        child: kraken,
-      ),
+    return Container(
+      color: Colors.green,
+      child: kraken,
     );
   }
 }
