@@ -40,7 +40,7 @@ class _MyFlutterViewState extends State<MyFlutterView> {
   }
 
   _invokeNativeMethod() async {
-    var result = await nativeMethodChannel.invokeMethod(nativeMethodName, 'Hi Native, I am FlutterView');
+    var result = await nativeMethodChannel.invokeMethod(nativeMethodName, DateTime.now().millisecondsSinceEpoch.toString());
     print('Flutter | received result : $result');
     setState(() {
       nativeResult = result ?? '';

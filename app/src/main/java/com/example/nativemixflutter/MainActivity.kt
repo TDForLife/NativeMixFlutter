@@ -211,8 +211,11 @@ class MainActivity : AppCompatActivity() {
         val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
             run {
                 Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
+                resetLossTimeInfo()
+                val diff = calDiff((call.arguments as String).toLong())
+                updateLossTimeInfo("Native 接收到 Flutter Call 的通信耗时：$diff" + "ms", -1)
                 if (call.method.equals(NATIVE_HANDLE_METHOD)) {
-                    val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
+                    val toast = Toast.makeText(this@MainActivity, call.method, Toast.LENGTH_SHORT)
                     toast.setGravity(Gravity.CENTER, 0, 350)
                     toast.show()
                     mountViewContainer.postDelayed({
