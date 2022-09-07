@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivityMainBinding
+import com.example.nativemixflutter.util.DisplayUtil
 import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterView
@@ -83,8 +84,8 @@ class MainActivity : AppCompatActivity() {
     private fun initFlutter() {
         flutterViewEngine = FlutterEngine(applicationContext)
         krakenViewEngine = FlutterEngine(applicationContext)
-        flutterActivityEngine = FlutterEngine(applicationContext)
 
+        flutterActivityEngine = FlutterEngine(applicationContext)
         FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
     }
 
@@ -165,9 +166,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initClickMyKrakenView() {
-        val autoViewSize = true
-        val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
-        val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
+        val autoViewSize = false
+        val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else DisplayUtil.dip2px(this, 320f)
+        val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else DisplayUtil.dip2px(this, 400f)
 
         // Kraken view click handler
         binding.mountKrakenViewBtn.setOnClickListener {
