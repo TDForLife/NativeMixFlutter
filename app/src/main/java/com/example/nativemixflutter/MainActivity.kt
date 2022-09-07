@@ -81,6 +81,8 @@ class MainActivity : AppCompatActivity() {
         binding.nativeCallCrossBtn.setOnClickListener {
             if (flutterView?.parent != null) {
                 flutterViewFlutterMethodChannel.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
+            } else if (krakenFlutterView?.parent != null) {
+                krakenViewMethodChannel.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
             }
         }
 
@@ -89,10 +91,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initClickMyFlutterView() {
-        // val viewWidth = FrameLayout.LayoutParams.WRAP_CONTENT
-        // val viewHeight = FrameLayout.LayoutParams.WRAP_CONTENT
-        val viewWidth = 600
-        val viewHeight = 600
+        val autoViewSize = false
+        val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
+        val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
 
         // Flutter view click handler
         binding.mountFlutterViewBtn.setOnClickListener {
@@ -141,7 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initClickMyKrakenView() {
-        val autoViewSize = false
+        val autoViewSize = true
         val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
         val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
 
@@ -162,6 +163,29 @@ class MainActivity : AppCompatActivity() {
                         Log.d(TAG, "onFlutterUiNoLongerDisplayed...");
                     }
                 })
+
+                // Native MethodHandler 接收处理 Flutter 的方法调用
+                val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
+                    run {
+                        Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
+                        if (call.method.equals(NATIVE_HANDLE_METHOD)) {
+                            val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
+                            toast.setGravity(Gravity.CENTER, 0, 350)
+                            toast.show()
+                            mountViewContainer.postDelayed({
+                                result.success("OK, I am Android Boss")
+                            }, 1500)
+                        } else {
+                            result.notImplemented()
+                        }
+                    }
+                }
+                val nativeMethodChannel = MethodChannel(krakenViewEngine.dartExecutor, NATIVE_METHOD_CHANNEL)
+                nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
+
+                // 初始化 Native 调用 Flutter 的方法通道
+                val messenger = krakenViewEngine.dartExecutor.binaryMessenger
+                krakenViewMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
             }
 
             // 2. FlutterEngine 执行自定义 EntryPoint
