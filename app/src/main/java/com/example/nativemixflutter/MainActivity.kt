@@ -13,6 +13,7 @@ import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 import io.flutter.plugin.common.MethodChannel
@@ -27,19 +28,24 @@ class MainActivity : AppCompatActivity() {
 
         private const val FLUTTER_METHOD_CHANNEL = "yob.flutter.io/method"
         private const val FLUTTER_HANDLE_METHOD = "onNativeCall"
+
+        private const val FLUTTER_ACTIVITY_CACHE_ENGINE = "flutter_activity_engine"
+
     }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mountViewContainer: FrameLayout
 
-    private lateinit var flutterViewFlutterMethodChannel: MethodChannel
+    private var flutterViewFlutterMethodChannel: MethodChannel? = null
     private lateinit var flutterViewEngine: FlutterEngine
     private var flutterView: FlutterView? = null
 
     private lateinit var krakenViewEngine: FlutterEngine
     private lateinit var krakenViewMethodChannel: MethodChannel
-    private lateinit var krakenViewMethodHandler: MethodChannel.MethodCallHandler
     private var krakenFlutterView: FlutterView? = null
+
+    private lateinit var flutterActivityEngine: FlutterEngine
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +62,8 @@ class MainActivity : AppCompatActivity() {
         // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
         flutterViewEngine.lifecycleChannel.appIsResumed()
         krakenViewEngine.lifecycleChannel.appIsResumed()
+        // Activity 不需要这步操作
+        // flutterActivityEngine.lifecycleChannel.appIsResumed()
     }
 
     override fun onDestroy() {
@@ -63,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         krakenFlutterView?.detachFromFlutterEngine()
         flutterViewEngine.destroy()
         krakenViewEngine.destroy()
+        flutterActivityEngine.destroy()
         mountViewContainer.removeCallbacks(null)
         super.onDestroy()
     }
@@ -74,16 +83,27 @@ class MainActivity : AppCompatActivity() {
     private fun initFlutter() {
         flutterViewEngine = FlutterEngine(applicationContext)
         krakenViewEngine = FlutterEngine(applicationContext)
+        flutterActivityEngine = FlutterEngine(applicationContext)
+
+        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
     }
 
     private fun initClickHandler() {
 
         binding.nativeCallCrossBtn.setOnClickListener {
             if (flutterView?.parent != null) {
-                flutterViewFlutterMethodChannel.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
+                flutterViewFlutterMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
             } else if (krakenFlutterView?.parent != null) {
                 krakenViewMethodChannel.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
             }
+        }
+
+        binding.routerToFlutterPageBtn.setOnClickListener {
+            Log.d(TAG, "Ready to route flutter page ... ")
+            // startActivity(FlutterActivity.createDefaultIntent(this))
+            createFlutterChannelAndInit(flutterActivityEngine)
+            flutterActivityEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
+            startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
         }
 
         initClickMyFlutterView()
@@ -101,29 +121,7 @@ class MainActivity : AppCompatActivity() {
             if (flutterView == null) {
                 flutterView = FlutterView(this)
                 flutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
-
-                // Native MethodHandler 接收处理 Flutter 的方法调用
-                val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
-                    run {
-                        Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
-                        if (call.method.equals(NATIVE_HANDLE_METHOD)) {
-                            val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
-                            toast.setGravity(Gravity.CENTER, 0, 350)
-                            toast.show()
-                            mountViewContainer.postDelayed({
-                                result.success("OK, I am Android Boss")
-                            }, 1500)
-                        } else {
-                            result.notImplemented()
-                        }
-                    }
-                }
-                val nativeMethodChannel = MethodChannel(flutterViewEngine.dartExecutor, NATIVE_METHOD_CHANNEL)
-                nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
-
-                // 初始化 Native 调用 Flutter 的方法通道
-                val messenger = flutterViewEngine.dartExecutor.binaryMessenger
-                flutterViewFlutterMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
+                flutterViewFlutterMethodChannel = createFlutterChannelAndInit(flutterViewEngine)
             }
 
             // 2. FlutterEngine 执行自定义 EntryPoint
@@ -139,6 +137,31 @@ class MainActivity : AppCompatActivity() {
             flutterView?.attachToFlutterEngine(flutterViewEngine)
         }
 
+    }
+
+    private fun createFlutterChannelAndInit(engine: FlutterEngine): MethodChannel {
+        // Native MethodHandler 接收处理 Flutter 的方法调用
+        val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
+            run {
+                Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
+                if (call.method.equals(NATIVE_HANDLE_METHOD)) {
+                    val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
+                    toast.setGravity(Gravity.CENTER, 0, 350)
+                    toast.show()
+                    mountViewContainer.postDelayed({
+                        result.success("OK, I am Android Boss")
+                    }, 1500)
+                } else {
+                    result.notImplemented()
+                }
+            }
+        }
+        val nativeMethodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
+        nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
+
+        // 初始化 Native 调用 Flutter 的方法通道
+        val messenger = engine.dartExecutor.binaryMessenger
+        return MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
     }
 
     private fun initClickMyKrakenView() {
@@ -206,11 +229,5 @@ class MainActivity : AppCompatActivity() {
             krakenFlutterView?.attachToFlutterEngine(krakenViewEngine)
         }
 
-        binding.routerToFlutterPageBtn.setOnClickListener {
-            Log.d(TAG, "Ready to route flutter page ... ")
-            startActivity(
-                FlutterActivity.createDefaultIntent(this)
-            )
-        }
     }
 }
