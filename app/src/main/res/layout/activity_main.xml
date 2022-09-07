@@ -44,7 +44,8 @@
             android:layout_height="match_parent"
             android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="13sp"
+            android:textColor="@android:color/holo_orange_light"
             android:text="@string/native_call_cross_view" />
 
         <Button

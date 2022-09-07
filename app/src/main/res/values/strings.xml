@@ -11,6 +11,6 @@
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="mount_flutter_view">挂载 Flutter View</string>
     <string name="mount_kraken_view">挂载 Kraken View</string>
-    <string name="native_call_cross_view">原生调 Flutter or Kraken</string>
+    <string name="native_call_cross_view">Native Invoke</string>
     <string name="router_to_flutter_page">路由 Flutter Page</string>
 </resources>

@@ -1,68 +1,88 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:kraken/devtools.dart';
-import 'package:kraken/kraken.dart';
+import 'package:flutter/services.dart';
 
 class MyFlutterView extends StatefulWidget {
   const MyFlutterView({Key? key, required this.title}) : super(key: key);
   final String title;
+
   @override
   State<MyFlutterView> createState() => _MyFlutterViewState();
 }
 
-// https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81
-class _MyFlutterViewState extends State<MyFlutterView> with WidgetsBindingObserver {
-  KrakenJavaScriptChannel javaScriptChannel = KrakenJavaScriptChannel();
-  late Kraken kraken;
+const nativeMethodChannelName = 'yob.native.io/method';
+const nativeMethodName = 'onFlutterCall';
+const flutterMethodChannelName = 'yob.flutter.io/method';
+const flutterMethodName = 'onNativeCall';
+
+class _MyFlutterViewState extends State<MyFlutterView> {
+
+  static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
+  static const flutterMethodChannel = MethodChannel(flutterMethodChannelName);
+
+  var nativeResult = '';
+  var nativeRequestCount = 0;
 
   @override
   void initState() {
     super.initState();
-    javaScriptChannel.onMethodCall = (String method, dynamic arguments) async {
-      print('MyHomePage flutter widget receive JS method - $method and args is $arguments');
-      Completer completer = Completer<String>();
-      Timer(const Duration(seconds: 1), () {
-        completer.complete('Hei, I am MyHomePage');
-      });
-      return completer.future;
-    };
-    kraken = Kraken(
-      bundle: KrakenBundle.fromUrl('assets:///jss/bundle.js'),
-      javaScriptChannel: javaScriptChannel,
-      devToolsService: ChromeDevToolsService(),
-      // bundle: KrakenBundle.fromUrl('https://andycall.oss-cn-beijing.aliyuncs.com/demo/demo-react.js'),
-      // bundle: KrakenBundle.fromUrl('https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81?attname=main.js'),
-      onLoadError: (FlutterError error, StackTrace stackTrace) {
-        print('onLoadError : ' + error.message);
-      },
-      onJSError: (String message) {
-        print('onJSError : ' + message);
-      },
-    );
+    flutterMethodChannel.setMethodCallHandler((call) async {
+      print("Flutter | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments);
+      switch(call.method) {
+        case flutterMethodName:
+          setState(() {
+            nativeRequestCount += 1;
+          });
+          return;
+      }
+      return null;
+    });
   }
 
-  void _incrementCounter() {
-    javaScriptChannel.invokeMethod('sayHello', 'I am Kraken');
+  _invokeNativeMethod() async {
+    var result = await nativeMethodChannel.invokeMethod(nativeMethodName, 'Hi, I am FlutterView');
+    print('Flutter | received result : $result');
+    setState(() {
+      nativeResult = result ?? '';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
       body: Container(
-          width: double.infinity,
-          color: Colors.orangeAccent,
-          child: kraken
+        width: double.infinity,
+        color: Colors.orangeAccent,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Positioned(
+              top: 30,
+              child: Text('FlutterView on dart side', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            Positioned(
+              top: 60,
+              child: Text(nativeResult, style: const TextStyle(color: Colors.white)),
+            ),
+            Positioned(
+              top: 90,
+              child: Text(nativeRequestCount > 0 ? 'Native call : $nativeRequestCount' : ''),
+            ),
+            Positioned(
+              bottom: 20,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    nativeResult = '';
+                  });
+                  _invokeNativeMethod();
+                },
+                child: const Text('Call Native'),
+              ),
+            ),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
