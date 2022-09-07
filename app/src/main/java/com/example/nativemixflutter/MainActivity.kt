@@ -12,6 +12,7 @@ import com.example.nativemixflutter.databinding.ActivityMainBinding
 import com.example.nativemixflutter.util.DisplayUtil
 import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -89,6 +90,12 @@ class MainActivity : AppCompatActivity() {
         FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
     }
 
+    private fun createFlutterView(): FlutterView {
+        val flutterTextureView = FlutterTextureView(applicationContext)
+        flutterTextureView.isOpaque = false
+        return FlutterView(applicationContext, flutterTextureView)
+    }
+
     private fun initClickHandler() {
 
         binding.nativeCallCrossBtn.setOnClickListener {
@@ -112,7 +119,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initClickMyFlutterView() {
-        val autoViewSize = true
+        val autoViewSize = false
         val viewWidth = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
         val viewHeight = if (autoViewSize) FrameLayout.LayoutParams.WRAP_CONTENT else 600
 
@@ -120,7 +127,7 @@ class MainActivity : AppCompatActivity() {
         binding.mountFlutterViewBtn.setOnClickListener {
             // 1. 初始化 Flutter View & 双向调用通道
             if (flutterView == null) {
-                flutterView = FlutterView(this)
+                flutterView = createFlutterView()
                 flutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
                 flutterViewFlutterMethodChannel = createFlutterChannelAndInit(flutterViewEngine)
             }
@@ -174,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         binding.mountKrakenViewBtn.setOnClickListener {
             // 1. 初始化 Flutter View
             if (krakenFlutterView == null) {
-                krakenFlutterView = FlutterView(this)
+                krakenFlutterView = createFlutterView()
                 krakenFlutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
                 krakenFlutterView?.addOnFirstFrameRenderedListener(object :
                     FlutterUiDisplayListener {
