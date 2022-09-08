@@ -83,11 +83,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        flutterView?.removeOnFirstFrameRenderedListener(flutterViewDisplayListener!!)
+        // FlutterView 不删除 Listener 也不会导致内存泄露
+        // flutterView?.removeOnFirstFrameRenderedListener(flutterViewDisplayListener!!)
         flutterView?.detachFromFlutterEngine()
         flutterViewEngine?.destroy()
 
-        krakenFlutterView?.removeOnFirstFrameRenderedListener(krakenViewDisplayListener!!)
+        // krakenFlutterView?.removeOnFirstFrameRenderedListener(krakenViewDisplayListener!!)
         krakenFlutterView?.detachFromFlutterEngine()
         krakenViewEngine?.destroy()
 
@@ -107,9 +108,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun initFlutter() {
         val start = curTime()
-        flutterViewEngine = FlutterEngine(this)
-        krakenViewEngine = FlutterEngine(this)
-        flutterActivityEngine = FlutterEngine(this)
+        // Context 使用 application 不会导致内容泄露
+        flutterViewEngine = FlutterEngine(applicationContext)
+        krakenViewEngine = FlutterEngine(applicationContext)
+        flutterActivityEngine = FlutterEngine(applicationContext)
         FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
 
         val diff = calDiff(start)
@@ -123,9 +125,10 @@ class MainActivity : AppCompatActivity() {
 
         val start = curTime()
 
-        val flutterTextureView = FlutterTextureView(this)
+        // Context 使用 application 不会导致内容泄露
+        val flutterTextureView = FlutterTextureView(applicationContext)
         flutterTextureView.isOpaque = false
-        val view =  FlutterView(this, flutterTextureView)
+        val view =  FlutterView(applicationContext, flutterTextureView)
         view.addOnFirstFrameRenderedListener(listener)
 
         val diff = calDiff(start)
@@ -154,7 +157,7 @@ class MainActivity : AppCompatActivity() {
 
         flutterViewDisplayListener = object :  FlutterUiDisplayListener {
             override fun onFlutterUiDisplayed() {
-                Log.d(TAG, "onFlutterUiDisplayed...")
+                Log.d(TAG, "onFlutterUiDisplayed..." + this@MainActivity)
                 executeDartEntryPointEndTime = System.currentTimeMillis()
                 val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                 updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
