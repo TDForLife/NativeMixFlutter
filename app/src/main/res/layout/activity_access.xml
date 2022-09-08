@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".AccessActivity">
+
+    <TextView
+        android:text="@string/test_mem_tip"
+        android:layout_width="wrap_content"
+        android:layout_marginTop="150dp"
+        android:textSize="40sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/access_test_btn"
+        android:text="@string/access_test"
+        android:layout_width="wrap_content"
+        android:padding="20dp"
+        android:textSize="20sp"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:layout_height="wrap_content" />
+
+</FrameLayout>

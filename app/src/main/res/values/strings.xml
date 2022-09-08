@@ -13,4 +13,6 @@
     <string name="mount_kraken_view">挂载 Kraken View</string>
     <string name="native_call_cross_view">Native Invoke</string>
     <string name="router_to_flutter_page">路由 Flutter Page</string>
+    <string name="test_mem_tip">为了测内存\n才有的这个界面</string>
+    <string name="access_test">进入测试</string>
 </resources>
