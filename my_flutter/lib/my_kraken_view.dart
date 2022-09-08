@@ -63,6 +63,7 @@ class MyKrakenState extends State<MyKrakenView> {
     kraken = Kraken(
       viewportWidth: 320,
       viewportHeight: 400,
+      background: Colors.green,
       // bundle: KrakenBundle.fromUrl('https://andycall.oss-cn-beijing.aliyuncs.com/demo/demo-react.js'),
       // bundle: KrakenBundle.fromUrl('https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81?attname=main.js'),
       // bundle: KrakenBundle.fromUrl('assets:///jss/bundle-fullscreen.js'),
@@ -90,7 +91,7 @@ class MyKrakenState extends State<MyKrakenView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.green,
+      color: Colors.orangeAccent,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
