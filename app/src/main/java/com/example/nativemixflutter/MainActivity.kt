@@ -282,8 +282,16 @@ class MainActivity : AppCompatActivity() {
                         result.success("OK, I am Android Boss")
                     }, 1000)
                 } else if (call.method.equals(NATIVE_HANDLE_LOADED_METHOD)) {
-                    val diff = (call.arguments as String).toLong() - executeDartEntryPointEndTime
-                    updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                    val data = call.arguments as List<*>
+                    val isReload = data[0] as Boolean
+                    if (isReload) {
+                        resetLossTimeInfo()
+                        val diff = System.currentTimeMillis() - (data[1] as String).toLong()
+                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                    } else {
+                        val diff = (data[1] as String).toLong() - executeDartEntryPointEndTime
+                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                    }
                     updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
                 } else {
                     result.notImplemented()
@@ -365,7 +373,7 @@ class MainActivity : AppCompatActivity() {
             lostTimeInfo.appendLine()
             lostTimeInfo.append(info)
         }
-//        statisticTimeTextView.text = lostTimeInfo.toString()
+        statisticTimeTextView.text = lostTimeInfo.toString()
     }
 
 }

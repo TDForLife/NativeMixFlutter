@@ -29,6 +29,9 @@ class MyKrakenState extends State<MyKrakenView> {
   late KrakenJavaScriptChannel javaScriptChannel;
   late Kraken kraken;
 
+  bool hasReload = false;
+  int startReloadTime = 0;
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +82,11 @@ class MyKrakenState extends State<MyKrakenView> {
       },
       onLoad: (KrakenController controller) {
         int loadedTime = DateTime.now().millisecondsSinceEpoch;
-        nativeMethodChannel.invokeMethod(nativeLoadedMethodName, loadedTime.toString());
+        List<dynamic> data = [hasReload, loadedTime.toString()];
+        if (hasReload) {
+          data = [hasReload, startReloadTime.toString()];
+        }
+        nativeMethodChannel.invokeMethod(nativeLoadedMethodName, data);
       },
     );
   }
@@ -102,6 +109,8 @@ class MyKrakenState extends State<MyKrakenView> {
             children: [
               ElevatedButton(
                 onPressed: () {
+                  hasReload = true;
+                  startReloadTime = DateTime.now().millisecondsSinceEpoch;
                   kraken.load(KrakenBundle.fromUrl('assets:///jss/bundle-part.js'));
                 },
                 child: const Text('Load Other Bundle'),
@@ -109,6 +118,8 @@ class MyKrakenState extends State<MyKrakenView> {
               const SizedBox(width: 10),
               ElevatedButton(
                 onPressed: () {
+                  hasReload = true;
+                  startReloadTime = DateTime.now().millisecondsSinceEpoch;
                   kraken.reload();
                 },
                 child: const Text('Reload Bundle'),
