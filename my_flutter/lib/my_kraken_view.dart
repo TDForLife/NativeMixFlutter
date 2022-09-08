@@ -8,6 +8,7 @@ import 'package:kraken/kraken.dart';
 
 const nativeMethodChannelName = 'yob.native.io/method';
 const nativeMethodName = 'onFlutterCall';
+const nativeLoadedMethodName = 'onFlutterLoadedCall';
 const krakenMethodChannelName = 'yob.flutter.io/method';
 const krakenMethodName = 'onNativeCall';
 const jsMethodName = 'onJSCall';
@@ -21,6 +22,8 @@ class MyKrakenView extends StatefulWidget {
 
 // https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81
 class MyKrakenState extends State<MyKrakenView> {
+
+  static const logTag = 'Kraken';
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
   static const krakenMethodChannel = MethodChannel(krakenMethodChannelName);
 
@@ -30,9 +33,12 @@ class MyKrakenState extends State<MyKrakenView> {
   @override
   void initState() {
     super.initState();
+    int start = DateTime.now().millisecondsSinceEpoch;
     _initKrakenChannel();
     _initKrakenJSChannel();
     _initKraken();
+    int diff = DateTime.now().millisecondsSinceEpoch - start;
+    print('$logTag initKraken diff is $diff' 'ms');
   }
 
   _initKrakenChannel() {
@@ -69,6 +75,10 @@ class MyKrakenState extends State<MyKrakenView> {
       onJSError: (String message) {
         print('onJSError : ' + message);
       },
+      onLoad: (KrakenController controller) {
+        int loadedTime = DateTime.now().millisecondsSinceEpoch;
+        nativeMethodChannel.invokeMethod(nativeLoadedMethodName, loadedTime.toString());
+      },
     );
   }
 
@@ -78,6 +88,7 @@ class MyKrakenState extends State<MyKrakenView> {
 
   @override
   Widget build(BuildContext context) {
+    print('KKK Build ${DateTime.now().millisecondsSinceEpoch}');
     return Container(
       color: Colors.green,
       child: kraken,

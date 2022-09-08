@@ -4,7 +4,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
-import android.view.View
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +27,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "main"
         private const val NATIVE_METHOD_CHANNEL = "yob.native.io/method"
         private const val NATIVE_HANDLE_METHOD = "onFlutterCall"
+        private const val NATIVE_HANDLE_LOADED_METHOD = "onFlutterLoadedCall"
 
         private const val FLUTTER_METHOD_CHANNEL = "yob.flutter.io/method"
         private const val FLUTTER_HANDLE_METHOD = "onNativeCall"
@@ -53,7 +53,8 @@ class MainActivity : AppCompatActivity() {
 
     private var initEngineLostTime = 0L
     private var lostTime = 0L
-    private var attachToFlutterEngineStartTime = 0L
+    private var executeDartEntryPointStartTime = 0L
+    private var executeDartEntryPointEndTime = 0L
     private var lostTimeInfo: StringBuilder = StringBuilder()
 
 
@@ -150,7 +151,8 @@ class MainActivity : AppCompatActivity() {
                 flutterView?.addOnFirstFrameRenderedListener(object :  FlutterUiDisplayListener {
                     override fun onFlutterUiDisplayed() {
                         Log.d(TAG, "onFlutterUiDisplayed...")
-                        val diffTime = System.currentTimeMillis() - attachToFlutterEngineStartTime
+                        executeDartEntryPointEndTime = System.currentTimeMillis();
+                        val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                         updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
                         updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
                     }
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             updateLossTimeInfo("连接 FlutterView & FlutterEngine ：$diff" + "ms", diff)
 
             // 4. FlutterEngine 执行自定义 EntryPoint
-            attachToFlutterEngineStartTime = System.currentTimeMillis()
+            executeDartEntryPointStartTime = System.currentTimeMillis()
             flutterViewEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
         }
     }
@@ -191,10 +193,12 @@ class MainActivity : AppCompatActivity() {
         val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
             run {
                 Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
-                resetLossTimeInfo()
-                val diff = calDiff((call.arguments as String).toLong())
-                updateLossTimeInfo("Native 接收到 Flutter Call 的通信耗时：$diff" + "ms", -1)
                 if (call.method.equals(NATIVE_HANDLE_METHOD)) {
+                    // 跨平台调用耗时统计
+                    resetLossTimeInfo()
+                    val diff = calDiff((call.arguments as String).toLong())
+                    updateLossTimeInfo("Native 接收到 Flutter Call 的通信耗时：$diff" + "ms", -1)
+
                     val toast = Toast.makeText(this@MainActivity, call.method, Toast.LENGTH_SHORT)
                     toast.setGravity(Gravity.CENTER, 0, 350)
                     toast.show()
@@ -238,14 +242,14 @@ class MainActivity : AppCompatActivity() {
                 krakenFlutterView?.addOnFirstFrameRenderedListener(object :
                     FlutterUiDisplayListener {
                     override fun onFlutterUiDisplayed() {
-                        Log.d(TAG, "onFlutterUiDisplayed...");
-                        val diffTime = System.currentTimeMillis() - attachToFlutterEngineStartTime
+                        Log.d(TAG, "onFlutterUiDisplayed...")
+                        executeDartEntryPointEndTime = System.currentTimeMillis();
+                        val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                         updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
-                        updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
                     }
 
                     override fun onFlutterUiNoLongerDisplayed() {
-                        Log.d(TAG, "onFlutterUiNoLongerDisplayed...");
+                        Log.d(TAG, "onFlutterUiNoLongerDisplayed...")
                     }
                 })
 
@@ -254,19 +258,23 @@ class MainActivity : AppCompatActivity() {
                 val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
                     run {
                         Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
-
-                        // 跨平台调用耗时统计
-                        resetLossTimeInfo()
-                        val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
-                        updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
-
                         if (call.method.equals(NATIVE_HANDLE_METHOD)) {
+
+                            // 跨平台调用耗时统计
+                            resetLossTimeInfo()
+                            val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
+                            updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
+
                             val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
                             toast.setGravity(Gravity.CENTER, 0, 350)
                             toast.show()
                             mountViewContainer.postDelayed({
                                 result.success("OK, I am Android Boss")
-                            }, 1500)
+                            }, 1000)
+                        } else if (call.method.equals(NATIVE_HANDLE_LOADED_METHOD)) {
+                            diff = (call.arguments as String).toLong() - executeDartEntryPointEndTime
+                            updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                            updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
                         } else {
                             result.notImplemented()
                         }
@@ -297,7 +305,7 @@ class MainActivity : AppCompatActivity() {
             updateLossTimeInfo("连接 FlutterView & FlutterEngine ：$diff" + "ms", diff)
 
             // 4. FlutterEngine 执行自定义 EntryPoint
-            attachToFlutterEngineStartTime = System.currentTimeMillis()
+            executeDartEntryPointStartTime = System.currentTimeMillis()
             krakenViewEngine.dartExecutor.executeDartEntrypoint(
                 DartEntrypoint(
                     FlutterInjector.instance().flutterLoader().findAppBundlePath(),
@@ -305,7 +313,6 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         }
-
     }
 
     private fun curTime(): Long {
@@ -319,7 +326,8 @@ class MainActivity : AppCompatActivity() {
     private fun resetLossTimeInfo() {
         lostTime = 0
         lostTimeInfo.clear()
-        attachToFlutterEngineStartTime = 0
+        executeDartEntryPointStartTime = 0
+        executeDartEntryPointEndTime = 0
         binding.statisticTimeTv.text = lostTimeInfo.toString()
     }
 
