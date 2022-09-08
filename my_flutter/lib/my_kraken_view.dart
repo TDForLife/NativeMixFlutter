@@ -48,8 +48,8 @@ class MyKrakenState extends State<MyKrakenView> {
       print('MyKrakenView receive JS method - $method and args is $arguments');
       Completer completer = Completer<String>();
       completer.complete('Hi JS, I am KrakenView');
-      nativeMethodChannel.invokeMethod(nativeMethodName,
-          'I am Native,I discover : \nkraken method was invoked by JS');
+      List<dynamic> nativeParams = [arguments[0], 'I am Native,I discover : \nkraken method was invoked by JS'];
+      nativeMethodChannel.invokeMethod(nativeMethodName, nativeParams);
       return completer.future;
     };
   }

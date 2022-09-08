@@ -66,7 +66,7 @@ class _MyFlutterViewState extends State<MyFlutterView> {
             ),
             Positioned(
               top: 90,
-              child: Text(nativeRequestCount > 0 ? 'Native call : $nativeRequestCount' : ''),
+              child: Text(nativeRequestCount > 0 ? 'Invoked from native : $nativeRequestCount' : ''),
             ),
             Positioned(
               bottom: 20,

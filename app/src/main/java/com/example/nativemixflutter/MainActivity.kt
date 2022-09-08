@@ -90,25 +90,6 @@ class MainActivity : AppCompatActivity() {
         mountViewContainer = findViewById(R.id.mount_container)
     }
 
-    private fun resetLossTimeInfo() {
-       lostTime = 0
-       lostTimeInfo.clear()
-       binding.statisticTimeTv.text = lostTimeInfo.toString()
-    }
-
-    private fun updateLossTimeInfo(info: String, diff: Long) {
-        if (diff != -1L) {
-            lostTime += diff
-        }
-        if (lostTimeInfo.isEmpty()) {
-            lostTimeInfo.append(info)
-        } else {
-            lostTimeInfo.appendLine()
-            lostTimeInfo.append(info)
-        }
-        binding.statisticTimeTv.text = lostTimeInfo.toString()
-    }
-
     private fun initFlutter() {
         val start = curTime()
         flutterViewEngine = FlutterEngine(applicationContext)
@@ -203,7 +184,6 @@ class MainActivity : AppCompatActivity() {
             attachToFlutterEngineStartTime = System.currentTimeMillis()
             flutterViewEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
         }
-
     }
 
     private fun createFlutterChannelAndInit(engine: FlutterEngine): MethodChannel {
@@ -241,15 +221,27 @@ class MainActivity : AppCompatActivity() {
 
         // Kraken view click handler
         binding.mountKrakenViewBtn.setOnClickListener {
+
+            resetLossTimeInfo()
+
             // 1. 初始化 Flutter View
             if (krakenFlutterView == null) {
+
+                updateLossTimeInfo("初始化 FlutterEngine ：$initEngineLostTime" + "ms", initEngineLostTime)
+
+                var start = curTime()
                 krakenFlutterView = createFlutterView()
+                var diff = calDiff(start)
+                updateLossTimeInfo("创建 FlutterView ：$diff" + "ms", diff)
+
                 krakenFlutterView!!.setBackgroundColor(Color.parseColor("#886200EE"))
                 krakenFlutterView?.addOnFirstFrameRenderedListener(object :
                     FlutterUiDisplayListener {
                     override fun onFlutterUiDisplayed() {
                         Log.d(TAG, "onFlutterUiDisplayed...");
-                        findViewById<FrameLayout>(R.id.mount_container).visibility = View.VISIBLE
+                        val diffTime = System.currentTimeMillis() - attachToFlutterEngineStartTime
+                        updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
+                        updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
                     }
 
                     override fun onFlutterUiNoLongerDisplayed() {
@@ -257,10 +249,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
 
+                start = curTime()
                 // Native MethodHandler 接收处理 Flutter 的方法调用
                 val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
                     run {
                         Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
+
+                        // 跨平台调用耗时统计
+                        resetLossTimeInfo()
+                        val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
+                        updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
+
                         if (call.method.equals(NATIVE_HANDLE_METHOD)) {
                             val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
                             toast.setGravity(Gravity.CENTER, 0, 350)
@@ -279,24 +278,32 @@ class MainActivity : AppCompatActivity() {
                 // 初始化 Native 调用 Flutter 的方法通道
                 val messenger = krakenViewEngine.dartExecutor.binaryMessenger
                 krakenViewMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
+
+                diff = calDiff(start)
+                updateLossTimeInfo("构建 Flutter MethodChannel：$diff" + "ms", diff)
             }
 
-            // 2. FlutterEngine 执行自定义 EntryPoint
+            // 2. 将 FlutterView 添加到 Android View 容器
+            mountViewContainer.removeAllViews()
+            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(viewWidth, viewHeight)
+            layoutParams.gravity = Gravity.CENTER
+            mountViewContainer.addView(krakenFlutterView, layoutParams)
+            updateLossTimeInfo("挂载 FlutterView 到原生 View 树：0" + "ms", 0)
+
+            // 3. 将 FlutterView 和 FlutterEngine 进行关联
+            val start = curTime()
+            krakenFlutterView?.attachToFlutterEngine(krakenViewEngine)
+            val diff = calDiff(start)
+            updateLossTimeInfo("连接 FlutterView & FlutterEngine ：$diff" + "ms", diff)
+
+            // 4. FlutterEngine 执行自定义 EntryPoint
+            attachToFlutterEngineStartTime = System.currentTimeMillis()
             krakenViewEngine.dartExecutor.executeDartEntrypoint(
                 DartEntrypoint(
                     FlutterInjector.instance().flutterLoader().findAppBundlePath(),
                     "showKraken"
                 )
             )
-
-            // 3. 将 FlutterView 添加到 Android View 容器
-            mountViewContainer.removeAllViews()
-            val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(viewWidth, viewHeight)
-            layoutParams.gravity = Gravity.CENTER
-            mountViewContainer.addView(krakenFlutterView, layoutParams)
-
-            // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            krakenFlutterView?.attachToFlutterEngine(krakenViewEngine)
         }
 
     }
@@ -308,4 +315,25 @@ class MainActivity : AppCompatActivity() {
     private fun calDiff(start: Long): Long {
         return System.currentTimeMillis() - start
     }
+
+    private fun resetLossTimeInfo() {
+        lostTime = 0
+        lostTimeInfo.clear()
+        attachToFlutterEngineStartTime = 0
+        binding.statisticTimeTv.text = lostTimeInfo.toString()
+    }
+
+    private fun updateLossTimeInfo(info: String, diff: Long) {
+        if (diff != -1L) {
+            lostTime += diff
+        }
+        if (lostTimeInfo.isEmpty()) {
+            lostTimeInfo.append(info)
+        } else {
+            lostTimeInfo.appendLine()
+            lostTimeInfo.append(info)
+        }
+        binding.statisticTimeTv.text = lostTimeInfo.toString()
+    }
+
 }
