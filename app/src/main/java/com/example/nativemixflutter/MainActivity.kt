@@ -42,12 +42,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mountViewContainer: FrameLayout
     private lateinit var statisticTimeTextView: TextView
 
-    private lateinit var flutterViewEngine: FlutterEngine
+    private var flutterViewEngine: FlutterEngine? = null
     private var flutterView: FlutterView? = null
+    private var flutterViewDisplayListener: FlutterUiDisplayListener? = null
     private var flutterViewMethodChannel: MethodChannel? = null
 
-    private lateinit var krakenViewEngine: FlutterEngine
+    private var krakenViewEngine: FlutterEngine? = null
     private var krakenFlutterView: FlutterView? = null
+    private var krakenViewDisplayListener: FlutterUiDisplayListener? = null
     private var krakenViewMethodChannel: MethodChannel? = null
 
     private lateinit var flutterActivityEngine: FlutterEngine
@@ -68,24 +70,31 @@ class MainActivity : AppCompatActivity() {
 
         initView()
         initFlutter()
-        initClickHandler()
+        initListener()
     }
 
     override fun onResume() {
         super.onResume()
         // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
-        flutterViewEngine.lifecycleChannel.appIsResumed()
-        krakenViewEngine.lifecycleChannel.appIsResumed()
+        flutterViewEngine?.lifecycleChannel?.appIsResumed()
+        krakenViewEngine?.lifecycleChannel?.appIsResumed()
         // Activity 不需要这步操作
         // flutterActivityEngine.lifecycleChannel.appIsResumed()
     }
 
     override fun onDestroy() {
+        flutterView?.removeOnFirstFrameRenderedListener(flutterViewDisplayListener!!)
         flutterView?.detachFromFlutterEngine()
+        flutterViewEngine?.destroy()
+
+        krakenFlutterView?.removeOnFirstFrameRenderedListener(krakenViewDisplayListener!!)
         krakenFlutterView?.detachFromFlutterEngine()
-        flutterViewEngine.destroy()
-        krakenViewEngine.destroy()
+        krakenViewEngine?.destroy()
+
+        FlutterEngineCache.getInstance().remove(FLUTTER_ACTIVITY_CACHE_ENGINE)
+        FlutterEngineCache.getInstance().clear()
         flutterActivityEngine.destroy()
+
         mountViewContainer.removeCallbacks(null)
         super.onDestroy()
     }
@@ -98,9 +107,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun initFlutter() {
         val start = curTime()
-        flutterViewEngine = FlutterEngine(applicationContext)
-        krakenViewEngine = FlutterEngine(applicationContext)
-        flutterActivityEngine = FlutterEngine(applicationContext)
+        flutterViewEngine = FlutterEngine(this)
+        krakenViewEngine = FlutterEngine(this)
+        flutterActivityEngine = FlutterEngine(this)
         FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
 
         val diff = calDiff(start)
@@ -114,9 +123,9 @@ class MainActivity : AppCompatActivity() {
 
         val start = curTime()
 
-        val flutterTextureView = FlutterTextureView(applicationContext)
+        val flutterTextureView = FlutterTextureView(this)
         flutterTextureView.isOpaque = false
-        val view =  FlutterView(applicationContext, flutterTextureView)
+        val view =  FlutterView(this, flutterTextureView)
         view.addOnFirstFrameRenderedListener(listener)
 
         val diff = calDiff(start)
@@ -126,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         return view
     }
 
-    private fun initClickHandler() {
+    private fun initListener() {
 
         binding.nativeCallCrossBtn.setOnClickListener {
             if (flutterView?.parent != null) {
@@ -143,6 +152,27 @@ class MainActivity : AppCompatActivity() {
             startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
         }
 
+        flutterViewDisplayListener = object :  FlutterUiDisplayListener {
+            override fun onFlutterUiDisplayed() {
+                Log.d(TAG, "onFlutterUiDisplayed...")
+                executeDartEntryPointEndTime = System.currentTimeMillis()
+                val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
+                updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
+                updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
+            }
+            override fun onFlutterUiNoLongerDisplayed() {}
+        }
+
+        krakenViewDisplayListener = object : FlutterUiDisplayListener {
+            override fun onFlutterUiDisplayed() {
+                Log.d(TAG, "onFlutterUiDisplayed...")
+                executeDartEntryPointEndTime = System.currentTimeMillis()
+                val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
+                updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
+            }
+            override fun onFlutterUiNoLongerDisplayed() {}
+        }
+
         initClickMyFlutterView()
         initClickMyKrakenView()
     }
@@ -155,28 +185,19 @@ class MainActivity : AppCompatActivity() {
             handleTimeInfoWhenClickMountView(flutterView)
 
             // 1. 初始化 Flutter View
-            flutterView = createFlutterView(flutterView, object :  FlutterUiDisplayListener {
-                override fun onFlutterUiDisplayed() {
-                    Log.d(TAG, "onFlutterUiDisplayed...")
-                    executeDartEntryPointEndTime = System.currentTimeMillis()
-                    val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
-                    updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
-                    updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
-                }
-                override fun onFlutterUiNoLongerDisplayed() {}
-            })
+            flutterView = createFlutterView(flutterView, flutterViewDisplayListener!!)
 
             // 2. 初始化 Flutter & Native 的双向调用通道
-            flutterViewMethodChannel = createFlutterChannelAndInit(flutterViewMethodChannel, flutterViewEngine, true)
+            flutterViewMethodChannel = createFlutterChannelAndInit(flutterViewMethodChannel, flutterViewEngine!!, true)
 
             // 3. 将 FlutterView 添加到 Android View 容器
             addFlutterViewIntoContainer(flutterView!!, 600, 600)
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(flutterView!!, flutterViewEngine)
+            attachFlutterViewToEngine(flutterView!!, flutterViewEngine!!)
 
             // 5. FlutterEngine 执行自定义 EntryPoint
-            accessFlutterEngineEntryPoint(flutterViewEngine, "default")
+            accessFlutterEngineEntryPoint(flutterViewEngine!!, "default")
         }
     }
 
@@ -231,15 +252,7 @@ class MainActivity : AppCompatActivity() {
             handleTimeInfoWhenClickMountView(krakenFlutterView)
 
             // 1. 初始化 Flutter View
-            krakenFlutterView = createFlutterView(krakenFlutterView, object : FlutterUiDisplayListener {
-                override fun onFlutterUiDisplayed() {
-                    Log.d(TAG, "onFlutterUiDisplayed...")
-                    executeDartEntryPointEndTime = System.currentTimeMillis()
-                    val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
-                    updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
-                }
-                override fun onFlutterUiNoLongerDisplayed() {}
-            })
+            krakenFlutterView = createFlutterView(krakenFlutterView, krakenViewDisplayListener!!)
 
             // 2. 初始化 Flutter & Native 的双向调用通道
             krakenViewMethodChannel = createKrakenChannelAndInit(krakenViewMethodChannel)
@@ -251,10 +264,10 @@ class MainActivity : AppCompatActivity() {
             )
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(krakenFlutterView!!, krakenViewEngine)
+            attachFlutterViewToEngine(krakenFlutterView!!, krakenViewEngine!!)
 
             // 5. FlutterEngine 执行自定义 EntryPoint
-            accessFlutterEngineEntryPoint(krakenViewEngine, "showKraken")
+            accessFlutterEngineEntryPoint(krakenViewEngine!!, "showKraken")
         }
     }
 
@@ -298,11 +311,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        val nativeMethodChannel = MethodChannel(krakenViewEngine.dartExecutor, NATIVE_METHOD_CHANNEL)
+        val nativeMethodChannel = MethodChannel(krakenViewEngine!!.dartExecutor, NATIVE_METHOD_CHANNEL)
         nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
 
         // 初始化 Native 调用 Flutter 的方法通道
-        val messenger = krakenViewEngine.dartExecutor.binaryMessenger
+        val messenger = krakenViewEngine!!.dartExecutor.binaryMessenger
         val flutterMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
 
         val diff = calDiff(start)
