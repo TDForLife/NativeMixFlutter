@@ -22,7 +22,6 @@ class MyKrakenView extends StatefulWidget {
 
 // https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81
 class MyKrakenState extends State<MyKrakenView> {
-
   static const logTag = 'Kraken';
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
   static const krakenMethodChannel = MethodChannel(krakenMethodChannelName);
@@ -62,6 +61,8 @@ class MyKrakenState extends State<MyKrakenView> {
 
   _initKraken() {
     kraken = Kraken(
+      viewportWidth: 320,
+      viewportHeight: 400,
       // bundle: KrakenBundle.fromUrl('https://andycall.oss-cn-beijing.aliyuncs.com/demo/demo-react.js'),
       // bundle: KrakenBundle.fromUrl('https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81?attname=main.js'),
       // bundle: KrakenBundle.fromUrl('assets:///jss/bundle-fullscreen.js'),
@@ -88,10 +89,33 @@ class MyKrakenState extends State<MyKrakenView> {
 
   @override
   Widget build(BuildContext context) {
-    print('KKK Build ${DateTime.now().millisecondsSinceEpoch}');
     return Container(
       color: Colors.green,
-      child: kraken,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          kraken,
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  kraken.load(KrakenBundle.fromUrl('assets:///jss/bundle-part.js'));
+                },
+                child: const Text('Load Other Bundle'),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: () {
+                  kraken.reload();
+                },
+                child: const Text('Reload Bundle'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
