@@ -2,9 +2,11 @@ package com.example.nativemixflutter
 
 import android.graphics.Color
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.Gravity
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivityMainBinding
@@ -38,14 +40,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mountViewContainer: FrameLayout
+    private lateinit var statisticTimeTextView: TextView
 
-    private var flutterViewMethodChannel: MethodChannel? = null
     private lateinit var flutterViewEngine: FlutterEngine
     private var flutterView: FlutterView? = null
+    private var flutterViewMethodChannel: MethodChannel? = null
 
     private lateinit var krakenViewEngine: FlutterEngine
-    private lateinit var krakenViewMethodChannel: MethodChannel
     private var krakenFlutterView: FlutterView? = null
+    private var krakenViewMethodChannel: MethodChannel? = null
 
     private lateinit var flutterActivityEngine: FlutterEngine
 
@@ -89,6 +92,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun initView() {
         mountViewContainer = findViewById(R.id.mount_container)
+        statisticTimeTextView = binding.statisticTimeTv
+        statisticTimeTextView.movementMethod = ScrollingMovementMethod.getInstance()
     }
 
     private fun initFlutter() {
@@ -97,13 +102,13 @@ class MainActivity : AppCompatActivity() {
         krakenViewEngine = FlutterEngine(applicationContext)
         flutterActivityEngine = FlutterEngine(applicationContext)
         FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
+
         val diff = calDiff(start)
         initEngineLostTime = diff / 3
     }
 
     private fun createFlutterView(flutterView: FlutterView?, listener: FlutterUiDisplayListener): FlutterView {
         if (flutterView != null) {
-            updateLossTimeInfo("创建 FlutterView ：0ms", 0)
             return flutterView
         }
 
@@ -116,6 +121,8 @@ class MainActivity : AppCompatActivity() {
 
         val diff = calDiff(start)
         updateLossTimeInfo("创建 FlutterView ：$diff" + "ms", diff)
+
+        view.tag = "Initialize"
         return view
     }
 
@@ -125,7 +132,7 @@ class MainActivity : AppCompatActivity() {
             if (flutterView?.parent != null) {
                 flutterViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
             } else if (krakenFlutterView?.parent != null) {
-                krakenViewMethodChannel.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
+                krakenViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
             }
         }
 
@@ -144,14 +151,14 @@ class MainActivity : AppCompatActivity() {
 
         // Flutter view click handler
         binding.mountFlutterViewBtn.setOnClickListener {
-            resetLossTimeInfo()
-            updateLossTimeInfo("初始化 FlutterEngine ：$initEngineLostTime" + "ms", initEngineLostTime)
+
+            handleTimeInfoWhenClickMountView(flutterView)
 
             // 1. 初始化 Flutter View
             flutterView = createFlutterView(flutterView, object :  FlutterUiDisplayListener {
                 override fun onFlutterUiDisplayed() {
                     Log.d(TAG, "onFlutterUiDisplayed...")
-                    executeDartEntryPointEndTime = System.currentTimeMillis();
+                    executeDartEntryPointEndTime = System.currentTimeMillis()
                     val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                     updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
                     updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
@@ -176,9 +183,6 @@ class MainActivity : AppCompatActivity() {
     private fun createFlutterChannelAndInit(channel: MethodChannel?, engine: FlutterEngine, needStatistic: Boolean): MethodChannel {
 
         if (channel != null) {
-            if (needStatistic) {
-                updateLossTimeInfo("构建 Flutter MethodChannel：0ms", 0)
-            }
             return channel
         }
 
@@ -224,8 +228,7 @@ class MainActivity : AppCompatActivity() {
         // Kraken view click handler
         binding.mountKrakenViewBtn.setOnClickListener {
 
-            resetLossTimeInfo()
-            updateLossTimeInfo("初始化 FlutterEngine ：$initEngineLostTime" + "ms", initEngineLostTime)
+            handleTimeInfoWhenClickMountView(krakenFlutterView)
 
             // 1. 初始化 Flutter View
             krakenFlutterView = createFlutterView(krakenFlutterView, object : FlutterUiDisplayListener {
@@ -244,7 +247,7 @@ class MainActivity : AppCompatActivity() {
             // 3. 将 FlutterView 添加到 Android View 容器
             addFlutterViewIntoContainer(krakenFlutterView!!,
                 DisplayUtil.dip2px(this, 320f),
-                DisplayUtil.dip2px(this, 400f)
+                DisplayUtil.dip2px(this, 480f)
             )
 
             // 4. 将 FlutterView 和 FlutterEngine 进行关联
@@ -257,7 +260,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun createKrakenChannelAndInit(channel: MethodChannel?) : MethodChannel {
         if (channel != null) {
-            updateLossTimeInfo("构建 Flutter MethodChannel：0ms", 0)
             return channel
         }
 
@@ -338,12 +340,19 @@ class MainActivity : AppCompatActivity() {
         return System.currentTimeMillis() - start
     }
 
+    private fun handleTimeInfoWhenClickMountView(mountView: FlutterView?) {
+        resetLossTimeInfo()
+        if (mountView?.tag == null) {
+            updateLossTimeInfo("初始化 FlutterEngine ：$initEngineLostTime" + "ms", initEngineLostTime)
+        }
+    }
+
     private fun resetLossTimeInfo() {
         lostTime = 0
         lostTimeInfo.clear()
         executeDartEntryPointStartTime = 0
         executeDartEntryPointEndTime = 0
-        binding.statisticTimeTv.text = lostTimeInfo.toString()
+        statisticTimeTextView.text = lostTimeInfo.toString()
     }
 
     private fun updateLossTimeInfo(info: String, diff: Long) {
@@ -356,7 +365,7 @@ class MainActivity : AppCompatActivity() {
             lostTimeInfo.appendLine()
             lostTimeInfo.append(info)
         }
-        binding.statisticTimeTv.text = lostTimeInfo.toString()
+//        statisticTimeTextView.text = lostTimeInfo.toString()
     }
 
 }
