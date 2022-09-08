@@ -26,11 +26,19 @@ class MyKrakenState extends State<MyKrakenView> {
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
   static const krakenMethodChannel = MethodChannel(krakenMethodChannelName);
 
+  static const bundleUrl = 'assets:///jss/bundle.js';
+  static const partBundleUrl = 'assets:///jss/bundle-part.js';
+  dynamic bundleSwitchMap = {
+    bundleUrl : partBundleUrl,
+    partBundleUrl: bundleUrl,
+  };
+
   late KrakenJavaScriptChannel javaScriptChannel;
   late Kraken kraken;
 
   bool hasReload = false;
   int startReloadTime = 0;
+  String currentBundleUrl = bundleUrl;
 
   @override
   void initState() {
@@ -81,6 +89,7 @@ class MyKrakenState extends State<MyKrakenView> {
         print('onJSError : ' + message);
       },
       onLoad: (KrakenController controller) {
+        currentBundleUrl = controller.url;
         int loadedTime = DateTime.now().millisecondsSinceEpoch;
         List<dynamic> data = [hasReload, loadedTime.toString()];
         if (hasReload) {
@@ -111,7 +120,8 @@ class MyKrakenState extends State<MyKrakenView> {
                 onPressed: () {
                   hasReload = true;
                   startReloadTime = DateTime.now().millisecondsSinceEpoch;
-                  kraken.load(KrakenBundle.fromUrl('assets:///jss/bundle-part.js'));
+                  var switchBundleUrl = bundleSwitchMap[currentBundleUrl];
+                  kraken.load(KrakenBundle.fromUrl(switchBundleUrl));
                 },
                 child: const Text('Load Other Bundle'),
               ),
