@@ -81,7 +81,8 @@ class MyKrakenState extends State<MyKrakenView> {
       // bundle: KrakenBundle.fromUrl('assets:///jss/bundle-part.js'),
       bundle: KrakenBundle.fromUrl('assets:///jss/bundle.js'),
       javaScriptChannel: javaScriptChannel,
-      devToolsService: ChromeDevToolsService(),
+      // 坑呐！开启 DevToolService 会导致内存泄露
+      // devToolsService: ChromeDevToolsService(),
       onLoadError: (FlutterError error, StackTrace stackTrace) {
         print('onLoadError : ' + error.message);
       },
