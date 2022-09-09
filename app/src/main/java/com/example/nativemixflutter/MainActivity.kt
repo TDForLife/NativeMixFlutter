@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var krakenViewDisplayListener: FlutterUiDisplayListener? = null
     private var krakenViewMethodChannel: MethodChannel? = null
 
-    private lateinit var flutterActivityEngine: FlutterEngine
+    private var flutterActivityEngine: FlutterEngine? = null
 
     //////////// 时间统计 /////////////
 
@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
 
         FlutterEngineCache.getInstance().remove(FLUTTER_ACTIVITY_CACHE_ENGINE)
         FlutterEngineCache.getInstance().clear()
-        flutterActivityEngine.destroy()
+        flutterActivityEngine?.destroy()
 
         mountViewContainer.removeCallbacks(null)
         super.onDestroy()
@@ -109,10 +109,10 @@ class MainActivity : AppCompatActivity() {
     private fun initFlutter() {
         val start = curTime()
         // Context 使用 application 不会导致内容泄露
-        flutterViewEngine = FlutterEngine(applicationContext)
-        krakenViewEngine = FlutterEngine(applicationContext)
-        flutterActivityEngine = FlutterEngine(applicationContext)
-        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
+        flutterViewEngine = FlutterEngine(this)
+        krakenViewEngine = FlutterEngine(this)
+//        flutterActivityEngine = FlutterEngine(this)
+//        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
 
         val diff = calDiff(start)
         initEngineLostTime = diff / 3
@@ -126,9 +126,9 @@ class MainActivity : AppCompatActivity() {
         val start = curTime()
 
         // Context 使用 application 不会导致内容泄露
-        val flutterTextureView = FlutterTextureView(applicationContext)
+        val flutterTextureView = FlutterTextureView(this)
         flutterTextureView.isOpaque = false
-        val view =  FlutterView(applicationContext, flutterTextureView)
+        val view =  FlutterView(this, flutterTextureView)
         view.addOnFirstFrameRenderedListener(listener)
 
         val diff = calDiff(start)
@@ -149,10 +149,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.routerToFlutterPageBtn.setOnClickListener {
-            // startActivity(FlutterActivity.createDefaultIntent(this))
-            createFlutterChannelAndInit(flutterViewMethodChannel, flutterActivityEngine, false)
-            flutterActivityEngine.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
-            startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
+            if (flutterActivityEngine != null) {
+                // startActivity(FlutterActivity.createDefaultIntent(this))
+                createFlutterChannelAndInit(flutterViewMethodChannel, flutterActivityEngine!!, false)
+                flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
+                startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
+            }
         }
 
         flutterViewDisplayListener = object :  FlutterUiDisplayListener {
