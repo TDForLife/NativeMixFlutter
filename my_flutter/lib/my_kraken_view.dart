@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:kraken/devtools.dart';
+// import 'package:kraken/devtools.dart';
 import 'package:kraken/kraken.dart';
 
 const nativeMethodChannelName = 'yob.native.io/method';

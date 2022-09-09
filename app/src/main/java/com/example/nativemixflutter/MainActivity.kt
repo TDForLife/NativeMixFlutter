@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         flutterViewEngine?.lifecycleChannel?.appIsResumed()
         krakenViewEngine?.lifecycleChannel?.appIsResumed()
         // Activity 不需要这步操作
-        // flutterActivityEngine.lifecycleChannel.appIsResumed()
+        flutterActivityEngine?.lifecycleChannel?.appIsResumed()
     }
 
     override fun onDestroy() {
@@ -88,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         flutterView?.detachFromFlutterEngine()
         flutterViewEngine?.destroy()
 
+        // FlutterView 不删除 Listener 也不会导致内存泄露
         // krakenFlutterView?.removeOnFirstFrameRenderedListener(krakenViewDisplayListener!!)
         krakenFlutterView?.detachFromFlutterEngine()
         krakenViewEngine?.destroy()
@@ -111,8 +112,8 @@ class MainActivity : AppCompatActivity() {
         // Context 使用 application 不会导致内容泄露
         flutterViewEngine = FlutterEngine(this)
         krakenViewEngine = FlutterEngine(this)
-//        flutterActivityEngine = FlutterEngine(this)
-//        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
+        flutterActivityEngine = FlutterEngine(this)
+        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
 
         val diff = calDiff(start)
         initEngineLostTime = diff / 3
