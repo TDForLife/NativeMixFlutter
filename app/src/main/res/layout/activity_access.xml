@@ -17,8 +17,8 @@
         android:layout_height="wrap_content" />
 
     <Button
-        android:id="@+id/access_test_btn"
-        android:text="@string/access_test"
+        android:id="@+id/access_single_test_btn"
+        android:text="@string/access_single_test"
         android:layout_width="wrap_content"
         android:padding="20dp"
         android:textSize="20sp"
@@ -26,4 +26,13 @@
         android:layout_marginTop="20dp"
         android:layout_height="wrap_content" />
 
+    <Button
+        android:id="@+id/access_multi_test_btn"
+        android:text="@string/access_single_test"
+        android:layout_width="wrap_content"
+        android:padding="20dp"
+        android:textSize="20sp"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:layout_height="wrap_content" />
 </FrameLayout>

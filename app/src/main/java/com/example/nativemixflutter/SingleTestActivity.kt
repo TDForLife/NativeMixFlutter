@@ -9,7 +9,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.nativemixflutter.databinding.ActivityMainBinding
+import com.example.nativemixflutter.databinding.ActivitySingleBinding
 import com.example.nativemixflutter.util.DisplayUtil
 import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterActivity
@@ -23,7 +23,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.lang.StringBuilder
 
 
-class MainActivity : AppCompatActivity() {
+class SingleTestActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "main"
@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var binding: ActivitySingleBinding
     private lateinit var mountViewContainer: FrameLayout
     private lateinit var statisticTimeTextView: TextView
 
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivitySingleBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         initView()
@@ -160,7 +160,7 @@ class MainActivity : AppCompatActivity() {
 
         flutterViewDisplayListener = object :  FlutterUiDisplayListener {
             override fun onFlutterUiDisplayed() {
-                Log.d(TAG, "onFlutterUiDisplayed..." + this@MainActivity)
+                Log.d(TAG, "onFlutterUiDisplayed..." + this@SingleTestActivity)
                 executeDartEntryPointEndTime = System.currentTimeMillis()
                 val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                 updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity() {
                     val diff = calDiff((call.arguments as String).toLong())
                     updateLossTimeInfo("Native 接收到 Flutter Call 的通信耗时：$diff" + "ms", -1)
 
-                    val toast = Toast.makeText(this@MainActivity, call.method, Toast.LENGTH_SHORT)
+                    val toast = Toast.makeText(this@SingleTestActivity, call.method, Toast.LENGTH_SHORT)
                     toast.setGravity(Gravity.CENTER, 0, 350)
                     toast.show()
                     mountViewContainer.postDelayed({
@@ -294,7 +294,7 @@ class MainActivity : AppCompatActivity() {
                     val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
                     updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
 
-                    val toast = Toast.makeText(this@MainActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
+                    val toast = Toast.makeText(this@SingleTestActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
                     toast.setGravity(Gravity.CENTER, 0, 350)
                     toast.show()
                     mountViewContainer.postDelayed({

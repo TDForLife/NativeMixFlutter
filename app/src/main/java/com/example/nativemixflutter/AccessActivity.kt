@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.example.nativemixflutter.databinding.ActivityAccessBinding
-import com.example.nativemixflutter.databinding.ActivityMainBinding
 
 class AccessActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAccessBinding
@@ -14,8 +13,8 @@ class AccessActivity : AppCompatActivity() {
         binding = ActivityAccessBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.accessTestBtn.setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
+        binding.accessSingleTestBtn.setOnClickListener {
+            startActivity(Intent(this, SingleTestActivity::class.java))
         }
     }
 }

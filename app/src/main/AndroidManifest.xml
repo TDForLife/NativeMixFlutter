@@ -24,7 +24,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".MainActivity"
+            android:name=".SingleTestActivity"
             android:exported="true"
             android:theme="@style/Theme.NativeMixFlutter.NoActionBar">
         </activity>
