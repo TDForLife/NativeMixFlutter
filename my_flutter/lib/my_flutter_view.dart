@@ -20,8 +20,9 @@ class _MyFlutterViewState extends State<MyFlutterView> {
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
   static const flutterMethodChannel = MethodChannel(flutterMethodChannelName);
 
-  var nativeResult = '';
+  var nativeResult = '1';
   var nativeRequestCount = 0;
+  var currentTime = 0;
 
   @override
   void initState() {
@@ -69,15 +70,33 @@ class _MyFlutterViewState extends State<MyFlutterView> {
               child: Text(nativeRequestCount > 0 ? 'Invoked from native : $nativeRequestCount' : ''),
             ),
             Positioned(
+              top: 120,
+              child: Text(currentTime > 0 ? DateTime.fromMillisecondsSinceEpoch(currentTime).toString() : ''),
+            ),
+            Positioned(
               bottom: 20,
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    nativeResult = '';
-                  });
-                  _invokeNativeMethod();
-                },
-                child: const Text('Call Native'),
+              child: Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        nativeResult = '';
+                      });
+                      _invokeNativeMethod();
+                    },
+                    child: const Text('Call Native'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        currentTime = DateTime.now().millisecondsSinceEpoch;
+                      });
+                      _invokeNativeMethod();
+                    },
+                    child: const Text('Time'),
+                  ),
+                ],
               ),
             ),
           ],
