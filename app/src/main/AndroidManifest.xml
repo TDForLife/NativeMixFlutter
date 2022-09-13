@@ -29,6 +29,11 @@
             android:theme="@style/Theme.NativeMixFlutter.NoActionBar">
         </activity>
         <activity
+            android:name=".MultiTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NativeMixFlutter.NoActionBar">
+        </activity>
+        <activity
             android:name="io.flutter.embedding.android.FlutterActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"

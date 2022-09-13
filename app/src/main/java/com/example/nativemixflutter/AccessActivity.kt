@@ -16,5 +16,9 @@ class AccessActivity : AppCompatActivity() {
         binding.accessSingleTestBtn.setOnClickListener {
             startActivity(Intent(this, SingleTestActivity::class.java))
         }
+
+        binding.accessMultiTestBtn.setOnClickListener {
+            startActivity(Intent(this, MultiTestActivity::class.java))
+        }
     }
 }
