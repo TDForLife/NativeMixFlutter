@@ -34,14 +34,16 @@ class MultiTestActivity : AppCompatActivity() {
     }
 
     private fun initView() {
+        val useCache = true
         mountContainer = binding.mountContainer
         binding.mountFlutterViewBtn.setOnClickListener {
-            val flutterView = createFlutterView("default")
+            val flutterView = createFlutterView("default", useCache)
             addFlutterViewToContainer(flutterView, 600, 600)
         }
         binding.mountKrakenViewBtn.setOnClickListener {
-            val flutterView = createFlutterView("showKraken")
-            addFlutterViewToContainer(flutterView,
+            val flutterView = createFlutterView("showKraken", useCache)
+            addFlutterViewToContainer(
+                flutterView,
                 DisplayUtil.dip2px(this, 320f),
                 DisplayUtil.dip2px(this, 480f)
             )
@@ -54,12 +56,16 @@ class MultiTestActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun createAndRunFlutterEngine(reuse: Boolean, entryPoint: String) : FlutterEngine {
+    private fun createAndRunFlutterEngine(
+        engineGroup: Boolean,
+        entryPoint: String,
+        cacheByPoint: Boolean
+    ): FlutterEngine {
         val dartPoint = if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
-            FlutterInjector.instance().flutterLoader().findAppBundlePath(),
-            entryPoint
-        )
-        return if (reuse) {
+                FlutterInjector.instance().flutterLoader().findAppBundlePath(),
+                entryPoint
+            )
+        val engine = if (engineGroup) {
             val app = applicationContext as App
             app.createAndRunFlutterEngine(this, dartPoint)
         } else {
@@ -67,15 +73,28 @@ class MultiTestActivity : AppCompatActivity() {
             flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
             flutterEngine
         }
+        if (cacheByPoint) {
+            FlutterEngineCache.getInstance().put(entryPoint, engine)
+        } else {
+            FlutterEngineCache.getInstance().put(FLUTTER_VIEW_ENGINE_ID + mountFlutterCount, engine)
+        }
+        return engine
     }
 
-    private fun createFlutterView(entryPoint: String): FlutterView {
+    private fun createFlutterView(entryPoint: String, useCache: Boolean): FlutterView {
         val flutterTextureView = FlutterTextureView(this)
         flutterTextureView.isOpaque = false
-        val view =  FlutterView(this, flutterTextureView)
+        val view = FlutterView(this, flutterTextureView)
 
-        val flutterEngine = createAndRunFlutterEngine(true, entryPoint)
-//        FlutterEngineCache.getInstance().put(FLUTTER_VIEW_ENGINE_ID + mountFlutterCount, flutterEngine)
+        var flutterEngine: FlutterEngine? = null
+        if (useCache) {
+            val target = FlutterEngineCache.getInstance().get(entryPoint)
+            flutterEngine = target
+        }
+        if (flutterEngine == null) {
+            flutterEngine = createAndRunFlutterEngine(true, entryPoint, useCache)
+        }
+
         flutterEngine.lifecycleChannel.appIsResumed()
         mountFlutterCount++
 
@@ -101,17 +120,25 @@ class MultiTestActivity : AppCompatActivity() {
             }
         }
 
-        for (count in 0..mountFlutterCount) {
-            val engine = FlutterEngineCache.getInstance().get(FLUTTER_VIEW_ENGINE_ID + count)
-            engine?.destroy()
+        val flutterEngineCacheClass: Class<*> = FlutterEngineCache::class.java
+        val cacheEnginesField = flutterEngineCacheClass.getDeclaredField("cachedEngines")
+        cacheEnginesField.isAccessible = true
+        val cacheEngineObj = cacheEnginesField.get(FlutterEngineCache.getInstance())
+        if (cacheEngineObj != null) {
+           val cacheEngineMap = cacheEngineObj as Map<*, *>
+            cacheEngineMap.forEach {
+                if (it is FlutterEngine) {
+                    it.destroy()
+                }
+            }
         }
 
         FlutterEngineCache.getInstance().clear()
     }
 
     private fun resetStatisticsInfo() {
-       mountFlutterCount = 0
-       mountOffsetX = 0
-       mountOffsetY = 0
+        mountFlutterCount = 0
+        mountOffsetX = 0
+        mountOffsetY = 0
     }
 }
