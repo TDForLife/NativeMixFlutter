@@ -54,23 +54,32 @@ class MultiTestActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun createAndRunFlutterEngine(reuse: Boolean, entryPoint: String) : FlutterEngine {
+        val dartPoint = if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
+            FlutterInjector.instance().flutterLoader().findAppBundlePath(),
+            entryPoint
+        )
+        return if (reuse) {
+            val app = applicationContext as App
+            app.createAndRunFlutterEngine(this, dartPoint)
+        } else {
+            val flutterEngine = FlutterEngine(this)
+            flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
+            flutterEngine
+        }
+    }
+
     private fun createFlutterView(entryPoint: String): FlutterView {
         val flutterTextureView = FlutterTextureView(this)
         flutterTextureView.isOpaque = false
         val view =  FlutterView(this, flutterTextureView)
 
-        val flutterEngine = FlutterEngine(this)
-        FlutterEngineCache.getInstance().put(FLUTTER_VIEW_ENGINE_ID + mountFlutterCount, flutterEngine)
+        val flutterEngine = createAndRunFlutterEngine(true, entryPoint)
+//        FlutterEngineCache.getInstance().put(FLUTTER_VIEW_ENGINE_ID + mountFlutterCount, flutterEngine)
         flutterEngine.lifecycleChannel.appIsResumed()
         mountFlutterCount++
 
         view.attachToFlutterEngine(flutterEngine)
-
-        val dartPoint = if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
-            FlutterInjector.instance().flutterLoader().findAppBundlePath(),
-            entryPoint
-        )
-        flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
 
         return view
     }
