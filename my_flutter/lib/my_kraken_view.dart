@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:kraken/devtools.dart';
-import 'package:kraken/kraken.dart';
+import 'package:webf/webf.dart';
 
 const nativeMethodChannelName = 'yob.native.io/method';
 const nativeMethodName = 'onFlutterCall';
@@ -33,8 +33,8 @@ class MyKrakenState extends State<MyKrakenView> {
     partBundleUrl: bundleUrl,
   };
 
-  late KrakenJavaScriptChannel javaScriptChannel;
-  late Kraken kraken;
+  late WebFJavaScriptChannel javaScriptChannel;
+  late WebF kraken;
 
   bool hasReload = false;
   int startReloadTime = 0;
@@ -59,7 +59,7 @@ class MyKrakenState extends State<MyKrakenView> {
   }
 
   _initKrakenJSChannel() {
-    javaScriptChannel = KrakenJavaScriptChannel();
+    javaScriptChannel = WebFJavaScriptChannel();
     javaScriptChannel.onMethodCall = (String method, dynamic arguments) async {
       print('MyKrakenView receive JS method - $method and args is $arguments');
       Completer completer = Completer<String>();
@@ -71,7 +71,7 @@ class MyKrakenState extends State<MyKrakenView> {
   }
 
   _initKraken() {
-    kraken = Kraken(
+    kraken = WebF(
       viewportWidth: 320,
       viewportHeight: 400,
       background: Colors.green,
@@ -79,7 +79,7 @@ class MyKrakenState extends State<MyKrakenView> {
       // bundle: KrakenBundle.fromUrl('https://qn-store-pub-tx.seewo.com/bp_test/2802cfbecfdd4710b555d6787c2b8d81?attname=main.js'),
       // bundle: KrakenBundle.fromUrl('assets:///jss/bundle-fullscreen.js'),
       // bundle: KrakenBundle.fromUrl('assets:///jss/bundle-part.js'),
-      bundle: KrakenBundle.fromUrl('assets:///jss/bundle.js'),
+      bundle: WebFBundle.fromUrl('assets:///jss/bundle.js'),
       javaScriptChannel: javaScriptChannel,
       // 坑呐！开启 DevToolService 会导致内存泄露
       // devToolsService: ChromeDevToolsService(),
@@ -89,7 +89,7 @@ class MyKrakenState extends State<MyKrakenView> {
       onJSError: (String message) {
         print('onJSError : ' + message);
       },
-      onLoad: (KrakenController controller) {
+      onLoad: (WebFController controller) {
         currentBundleUrl = controller.url;
         int loadedTime = DateTime.now().millisecondsSinceEpoch;
         List<dynamic> data = [hasReload, loadedTime.toString()];
@@ -122,7 +122,7 @@ class MyKrakenState extends State<MyKrakenView> {
                   hasReload = true;
                   startReloadTime = DateTime.now().millisecondsSinceEpoch;
                   var switchBundleUrl = bundleSwitchMap[currentBundleUrl];
-                  kraken.load(KrakenBundle.fromUrl(switchBundleUrl));
+                  kraken.load(WebFBundle.fromUrl(switchBundleUrl));
                 },
                 child: const Text('Load Other Bundle'),
               ),
