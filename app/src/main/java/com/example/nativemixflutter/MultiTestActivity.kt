@@ -2,7 +2,6 @@ package com.example.nativemixflutter
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivityMultiBinding
@@ -18,7 +17,6 @@ import io.flutter.embedding.engine.dart.DartExecutor
 class MultiTestActivity : AppCompatActivity() {
 
     companion object {
-        const val FLUTTER_VIEW_ENGINE_ID = "flutter_view_engine_id_"
         const val MOUNT_OFFSET_X = 40
         const val MOUNT_OFFSET_Y = 40
         const val MOUNT_REUSE_OFFSET_X = 0
@@ -42,8 +40,7 @@ class MultiTestActivity : AppCompatActivity() {
     private fun initView() {
         mountContainer = binding.mountContainer
         binding.addFlutterEngineBtn.setOnClickListener {
-            val app = applicationContext as App
-            val engine = app.createAndRunFlutterEngine(this, DartExecutor.DartEntrypoint.createDefault())
+            createAndRunFlutterEngine(true, "default", false)
         }
         binding.mountFlutterViewBtn.setOnClickListener {
             val flutterView = createFlutterView("default", false)
@@ -107,24 +104,22 @@ class MultiTestActivity : AppCompatActivity() {
         }
         if (cacheByPoint) {
             FlutterEngineCache.getInstance().put(entryPoint, engine)
-        } else {
-            FlutterEngineCache.getInstance().put(FLUTTER_VIEW_ENGINE_ID + mountFlutterCount, engine)
         }
         return engine
     }
 
-    private fun createFlutterView(entryPoint: String, useCache: Boolean): FlutterView {
+    private fun createFlutterView(entryPoint: String, useCacheEngine: Boolean): FlutterView {
         val flutterTextureView = FlutterTextureView(this)
         flutterTextureView.isOpaque = false
         val view = FlutterView(this, flutterTextureView)
 
         var flutterEngine: FlutterEngine? = null
-        if (useCache) {
+        if (useCacheEngine) {
             val target = FlutterEngineCache.getInstance().get(entryPoint)
             flutterEngine = target
         }
         if (flutterEngine == null) {
-            flutterEngine = createAndRunFlutterEngine(false, entryPoint, useCache)
+            flutterEngine = createAndRunFlutterEngine(false, entryPoint, useCacheEngine)
         }
 
         flutterEngine.lifecycleChannel.appIsResumed()

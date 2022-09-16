@@ -11,11 +11,12 @@
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="mount_flutter_view">挂载 Flutter View</string>
     <string name="mount_kraken_view">挂载 Kraken View</string>
-    <string name="mount_reuse_flutter_view">挂载复用 Flutter View</string>
-    <string name="mount_reuse_kraken_view">挂载复用 Kraken View</string>
+    <string name="mount_reuse_flutter_view">挂载 Flutter View\n（复用 Engine）</string>
+    <string name="mount_reuse_kraken_view">挂载 Kraken View\n（复用 Engine）</string>
     <string name="native_call_cross_view">Native Invoke</string>
     <string name="router_to_flutter_page">路由 Flutter Page</string>
     <string name="test_mem_tip">Native mix \nFlutter and Kraken</string>
-    <string name="access_single_test">进入单体测试</string>
-    <string name="access_multi_test">进入多体测试</string>
+    <string name="access_single_test">进入单视图测试</string>
+    <string name="access_multi_test">进入多视图测试</string>
+    <string name="add_flutter_engine">纯粹添加 FlutterEngine into Group</string>
 </resources>
