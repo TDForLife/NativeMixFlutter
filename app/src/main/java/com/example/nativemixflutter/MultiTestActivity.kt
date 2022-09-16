@@ -21,6 +21,11 @@ class MultiTestActivity : AppCompatActivity() {
         const val MOUNT_OFFSET_Y = 40
         const val MOUNT_REUSE_OFFSET_X = 0
         const val MOUNT_REUSE_OFFSET_Y = 500
+        const val CREATE_ENGINE_BY_GROUP = true
+        const val MOUNT_DIRTY_TYPE_FLUTTER = 1
+        const val MOUNT_DIRTY_TYPE_FLUTTER_CACHE = 2
+        const val MOUNT_DIRTY_TYPE_KRAKEN = 3
+        const val MOUNT_DIRTY_TYPE_KRAKEN_CACHE = 4
     }
 
     private lateinit var binding: ActivityMultiBinding
@@ -29,6 +34,7 @@ class MultiTestActivity : AppCompatActivity() {
     private var mountFlutterCount = 0
     private var mountOffsetX = 0
     private var mountOffsetY = 0
+    private var mountDirtyType = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,10 +49,12 @@ class MultiTestActivity : AppCompatActivity() {
             createAndRunFlutterEngine(true, "default", false)
         }
         binding.mountFlutterViewBtn.setOnClickListener {
+            checkDirtyAndClean(MOUNT_DIRTY_TYPE_FLUTTER)
             val flutterView = createFlutterView("default", false)
             addFlutterViewToContainer(flutterView, 600, 600, false)
         }
         binding.mountKrakenViewBtn.setOnClickListener {
+            checkDirtyAndClean(MOUNT_DIRTY_TYPE_FLUTTER_CACHE)
             val flutterView = createFlutterView("showKraken", false)
             addFlutterViewToContainer(
                 flutterView,
@@ -56,10 +64,12 @@ class MultiTestActivity : AppCompatActivity() {
             )
         }
         binding.mountReuseFlutterViewBtn.setOnClickListener {
+            checkDirtyAndClean(MOUNT_DIRTY_TYPE_KRAKEN)
             val flutterView = createFlutterView("default", true)
             addFlutterViewToContainer(flutterView, 600, 600, true)
         }
         binding.mountReuseKrakenViewBtn.setOnClickListener {
+            checkDirtyAndClean(MOUNT_DIRTY_TYPE_KRAKEN_CACHE)
             val flutterView = createFlutterView("showKraken", true)
             addFlutterViewToContainer(
                 flutterView,
@@ -71,9 +81,18 @@ class MultiTestActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        clearAllFlutterView()
-        resetStatisticsInfo()
+        resetAll()
         super.onDestroy()
+    }
+
+    private fun checkDirtyAndClean(type: Int) {
+        if (mountDirtyType == -1) {
+            mountDirtyType = type
+        }
+        if (mountDirtyType != type) {
+            mountDirtyType = type
+            resetAll()
+        }
     }
 
     private fun addFlutterViewToContainer(flutterView: FlutterView, width: Int, height: Int, reuse: Boolean) {
@@ -119,7 +138,7 @@ class MultiTestActivity : AppCompatActivity() {
             flutterEngine = target
         }
         if (flutterEngine == null) {
-            flutterEngine = createAndRunFlutterEngine(false, entryPoint, useCacheEngine)
+            flutterEngine = createAndRunFlutterEngine(CREATE_ENGINE_BY_GROUP, entryPoint, useCacheEngine)
         }
 
         flutterEngine.lifecycleChannel.appIsResumed()
@@ -137,7 +156,10 @@ class MultiTestActivity : AppCompatActivity() {
                 child.detachFromFlutterEngine()
             }
         }
+        mountContainer.removeAllViews()
+    }
 
+    private fun destroyEngineGroup() {
         val app = applicationContext as App
         val flutterEngineGroupClass: Class<*> = FlutterEngineGroup::class.java
         val activeEnginesField = flutterEngineGroupClass.getDeclaredField("activeEngines")
@@ -155,20 +177,21 @@ class MultiTestActivity : AppCompatActivity() {
                 it.destroy()
             }
         }
+    }
 
+    private fun destroyEngineCache() {
         val flutterEngineCacheClass: Class<*> = FlutterEngineCache::class.java
         val cacheEnginesField = flutterEngineCacheClass.getDeclaredField("cachedEngines")
         cacheEnginesField.isAccessible = true
         val cacheEngineObj = cacheEnginesField.get(FlutterEngineCache.getInstance())
         if (cacheEngineObj != null) {
-           val cacheEngineMap = cacheEngineObj as Map<*, *>
+            val cacheEngineMap = cacheEngineObj as Map<*, *>
             cacheEngineMap.forEach {
                 if (it is FlutterEngine) {
                     it.destroy()
                 }
             }
         }
-
         FlutterEngineCache.getInstance().clear()
     }
 
@@ -176,5 +199,12 @@ class MultiTestActivity : AppCompatActivity() {
         mountFlutterCount = 0
         mountOffsetX = 0
         mountOffsetY = 0
+    }
+
+    private fun resetAll() {
+        clearAllFlutterView()
+        destroyEngineGroup()
+        destroyEngineCache()
+        resetStatisticsInfo()
     }
 }
