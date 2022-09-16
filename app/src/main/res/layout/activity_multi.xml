@@ -27,7 +27,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/mount_flutter_view"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
         <Button
             android:id="@+id/mount_kraken_view_btn"
@@ -36,9 +36,42 @@
             android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:text="@string/mount_kraken_view"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/add_flutter_engine_btn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="添加 FlutterEngine"
+            android:textSize="13sp" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp">
+
+        <Button
+            android:id="@+id/mount_reuse_flutter_view_btn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/mount_reuse_flutter_view"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/mount_reuse_kraken_view_btn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/mount_reuse_kraken_view"
+            android:textSize="13sp" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
 
 </androidx.appcompat.widget.LinearLayoutCompat>

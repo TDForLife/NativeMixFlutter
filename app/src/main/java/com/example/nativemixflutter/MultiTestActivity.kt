@@ -2,6 +2,7 @@ package com.example.nativemixflutter
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivityMultiBinding
@@ -11,12 +12,17 @@ import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.FlutterEngineGroup
 import io.flutter.embedding.engine.dart.DartExecutor
 
 class MultiTestActivity : AppCompatActivity() {
 
     companion object {
         const val FLUTTER_VIEW_ENGINE_ID = "flutter_view_engine_id_"
+        const val MOUNT_OFFSET_X = 40
+        const val MOUNT_OFFSET_Y = 40
+        const val MOUNT_REUSE_OFFSET_X = 0
+        const val MOUNT_REUSE_OFFSET_Y = 500
     }
 
     private lateinit var binding: ActivityMultiBinding
@@ -34,18 +40,35 @@ class MultiTestActivity : AppCompatActivity() {
     }
 
     private fun initView() {
-        val useCache = true
         mountContainer = binding.mountContainer
+        binding.addFlutterEngineBtn.setOnClickListener {
+            val app = applicationContext as App
+            val engine = app.createAndRunFlutterEngine(this, DartExecutor.DartEntrypoint.createDefault())
+        }
         binding.mountFlutterViewBtn.setOnClickListener {
-            val flutterView = createFlutterView("default", useCache)
-            addFlutterViewToContainer(flutterView, 600, 600)
+            val flutterView = createFlutterView("default", false)
+            addFlutterViewToContainer(flutterView, 600, 600, false)
         }
         binding.mountKrakenViewBtn.setOnClickListener {
-            val flutterView = createFlutterView("showKraken", useCache)
+            val flutterView = createFlutterView("showKraken", false)
             addFlutterViewToContainer(
                 flutterView,
                 DisplayUtil.dip2px(this, 320f),
-                DisplayUtil.dip2px(this, 480f)
+                DisplayUtil.dip2px(this, 480f),
+                false
+            )
+        }
+        binding.mountReuseFlutterViewBtn.setOnClickListener {
+            val flutterView = createFlutterView("default", true)
+            addFlutterViewToContainer(flutterView, 600, 600, true)
+        }
+        binding.mountReuseKrakenViewBtn.setOnClickListener {
+            val flutterView = createFlutterView("showKraken", true)
+            addFlutterViewToContainer(
+                flutterView,
+                DisplayUtil.dip2px(this, 320f),
+                DisplayUtil.dip2px(this, 480f),
+               true
             )
         }
     }
@@ -54,6 +77,15 @@ class MultiTestActivity : AppCompatActivity() {
         clearAllFlutterView()
         resetStatisticsInfo()
         super.onDestroy()
+    }
+
+    private fun addFlutterViewToContainer(flutterView: FlutterView, width: Int, height: Int, reuse: Boolean) {
+        val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(width, height)
+        layoutParams.setMargins(mountOffsetX, mountOffsetY, 0, 0)
+        mountOffsetX += if (reuse) MOUNT_REUSE_OFFSET_X else MOUNT_OFFSET_X
+        mountOffsetY += if (reuse) MOUNT_REUSE_OFFSET_Y else MOUNT_OFFSET_Y
+        flutterView.setBackgroundColor(Color.parseColor("#886200EE"))
+        mountContainer.addView(flutterView, layoutParams)
     }
 
     private fun createAndRunFlutterEngine(
@@ -92,7 +124,7 @@ class MultiTestActivity : AppCompatActivity() {
             flutterEngine = target
         }
         if (flutterEngine == null) {
-            flutterEngine = createAndRunFlutterEngine(true, entryPoint, useCache)
+            flutterEngine = createAndRunFlutterEngine(false, entryPoint, useCache)
         }
 
         flutterEngine.lifecycleChannel.appIsResumed()
@@ -103,20 +135,29 @@ class MultiTestActivity : AppCompatActivity() {
         return view
     }
 
-    private fun addFlutterViewToContainer(flutterView: FlutterView, width: Int, height: Int) {
-        val layoutParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(width, height)
-        layoutParams.setMargins(mountOffsetX, mountOffsetY, 0, 0)
-        mountOffsetX += 40
-        mountOffsetY += 40
-        flutterView.setBackgroundColor(Color.parseColor("#886200EE"))
-        mountContainer.addView(flutterView, layoutParams)
-    }
-
     private fun clearAllFlutterView() {
         for (childIndex in 0..mountContainer.childCount) {
             val child = mountContainer.getChildAt(childIndex)
             if (child is FlutterView) {
                 child.detachFromFlutterEngine()
+            }
+        }
+
+        val app = applicationContext as App
+        val flutterEngineGroupClass: Class<*> = FlutterEngineGroup::class.java
+        val activeEnginesField = flutterEngineGroupClass.getDeclaredField("activeEngines")
+        activeEnginesField.isAccessible = true
+        val activeEnginesObj= activeEnginesField.get(app.engines)
+        if (activeEnginesObj != null) {
+            val activeEngines = (activeEnginesObj as MutableList<*>)
+            val cloneEngines = mutableListOf<FlutterEngine>()
+            activeEngines.forEach {
+                if (it is FlutterEngine) {
+                    cloneEngines.add(it)
+                }
+            }
+            cloneEngines.forEach {
+                it.destroy()
             }
         }
 
