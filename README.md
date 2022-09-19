@@ -1,6 +1,6 @@
 ### 如何运行
 
-执行一下命令，生成 Flutter 模块的 .android 目录
+执行以下命令，生成 Flutter 模块的 .android 目录
 
 ```shell
 cd ./my_flutter
@@ -16,7 +16,7 @@ flutter pub get
 > 测试 FlutterView & KrakenView 关于 JS \ Flutter \ Native 的多端双向通信
 
 - MultiTestActivity
-> 测试 
+> 测试多个 FlutterView 以及 FlutterView + Kraken，所带来的内存占用（须自行配合 Android Profiler 查看）
 
 **Flutter 侧**
 
