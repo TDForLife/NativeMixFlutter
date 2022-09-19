@@ -6,13 +6,8 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivityMultiBinding
 import com.example.nativemixflutter.util.DisplayUtil
-import io.flutter.FlutterInjector
-import io.flutter.embedding.android.FlutterTextureView
+import com.example.nativemixflutter.util.FlutterUtil
 import io.flutter.embedding.android.FlutterView
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterEngineCache
-import io.flutter.embedding.engine.FlutterEngineGroup
-import io.flutter.embedding.engine.dart.DartExecutor
 
 class MultiTestActivity : AppCompatActivity() {
 
@@ -46,7 +41,10 @@ class MultiTestActivity : AppCompatActivity() {
     private fun initView() {
         mountContainer = binding.mountContainer
         binding.addFlutterEngineBtn.setOnClickListener {
-            createAndRunFlutterEngine(true, "default", false)
+            FlutterUtil.createAndRunFlutterEngine(this, "default",
+                engineGroup = true,
+                cacheByPoint = false
+            )
         }
         binding.mountFlutterViewBtn.setOnClickListener {
             checkDirtyAndClean(MOUNT_DIRTY_TYPE_FLUTTER)
@@ -104,95 +102,10 @@ class MultiTestActivity : AppCompatActivity() {
         mountContainer.addView(flutterView, layoutParams)
     }
 
-    private fun createAndRunFlutterEngine(
-        engineGroup: Boolean,
-        entryPoint: String,
-        cacheByPoint: Boolean
-    ): FlutterEngine {
-        val dartPoint = if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
-                FlutterInjector.instance().flutterLoader().findAppBundlePath(),
-                entryPoint
-            )
-        val engine = if (engineGroup) {
-            val app = applicationContext as App
-            app.createAndRunFlutterEngine(this, dartPoint)
-        } else {
-            val flutterEngine = FlutterEngine(this)
-            flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
-            flutterEngine
-        }
-        if (cacheByPoint) {
-            FlutterEngineCache.getInstance().put(entryPoint, engine)
-        }
-        return engine
-    }
-
     private fun createFlutterView(entryPoint: String, useCacheEngine: Boolean): FlutterView {
-        val flutterTextureView = FlutterTextureView(this)
-        flutterTextureView.isOpaque = false
-        val view = FlutterView(this, flutterTextureView)
-
-        var flutterEngine: FlutterEngine? = null
-        if (useCacheEngine) {
-            val target = FlutterEngineCache.getInstance().get(entryPoint)
-            flutterEngine = target
-        }
-        if (flutterEngine == null) {
-            flutterEngine = createAndRunFlutterEngine(CREATE_ENGINE_BY_GROUP, entryPoint, useCacheEngine)
-        }
-
-        flutterEngine.lifecycleChannel.appIsResumed()
+        val view = FlutterUtil.createFlutterView(this, entryPoint, CREATE_ENGINE_BY_GROUP, useCacheEngine)
         mountFlutterCount++
-
-        view.attachToFlutterEngine(flutterEngine)
-
         return view
-    }
-
-    private fun clearAllFlutterView() {
-        for (childIndex in 0..mountContainer.childCount) {
-            val child = mountContainer.getChildAt(childIndex)
-            if (child is FlutterView) {
-                child.detachFromFlutterEngine()
-            }
-        }
-        mountContainer.removeAllViews()
-    }
-
-    private fun destroyEngineGroup() {
-        val app = applicationContext as App
-        val flutterEngineGroupClass: Class<*> = FlutterEngineGroup::class.java
-        val activeEnginesField = flutterEngineGroupClass.getDeclaredField("activeEngines")
-        activeEnginesField.isAccessible = true
-        val activeEnginesObj= activeEnginesField.get(app.engines)
-        if (activeEnginesObj != null) {
-            val activeEngines = (activeEnginesObj as MutableList<*>)
-            val cloneEngines = mutableListOf<FlutterEngine>()
-            activeEngines.forEach {
-                if (it is FlutterEngine) {
-                    cloneEngines.add(it)
-                }
-            }
-            cloneEngines.forEach {
-                it.destroy()
-            }
-        }
-    }
-
-    private fun destroyEngineCache() {
-        val flutterEngineCacheClass: Class<*> = FlutterEngineCache::class.java
-        val cacheEnginesField = flutterEngineCacheClass.getDeclaredField("cachedEngines")
-        cacheEnginesField.isAccessible = true
-        val cacheEngineObj = cacheEnginesField.get(FlutterEngineCache.getInstance())
-        if (cacheEngineObj != null) {
-            val cacheEngineMap = cacheEngineObj as Map<*, *>
-            cacheEngineMap.forEach {
-                if (it is FlutterEngine) {
-                    it.destroy()
-                }
-            }
-        }
-        FlutterEngineCache.getInstance().clear()
     }
 
     private fun resetStatisticsInfo() {
@@ -202,9 +115,9 @@ class MultiTestActivity : AppCompatActivity() {
     }
 
     private fun resetAll() {
-        clearAllFlutterView()
-        destroyEngineGroup()
-        destroyEngineCache()
+        FlutterUtil.clearAllFlutterView(mountContainer)
+        FlutterUtil.destroyEngineGroup(this)
+        FlutterUtil.destroyEngineCache()
         resetStatisticsInfo()
     }
 }

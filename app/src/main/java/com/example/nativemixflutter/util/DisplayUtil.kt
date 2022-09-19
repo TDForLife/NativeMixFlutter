@@ -45,8 +45,4 @@ class DisplayUtil private constructor() {
         }
     }
 
-    init {
-        /* cannot be instantiated */
-        throw UnsupportedOperationException("cannot be instantiated")
-    }
 }

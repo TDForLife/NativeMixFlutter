@@ -13,13 +13,13 @@
         android:layout_weight="1"
         android:background="#446200EE"
         android:paddingTop="20dp"
-        android:paddingBottom="20dp" />
+        android:paddingBottom="15dp" />
 
     <TextView
         android:id="@+id/statistic_time_tv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxHeight="160dp"
+        android:maxHeight="180dp"
         android:padding="5dp"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
