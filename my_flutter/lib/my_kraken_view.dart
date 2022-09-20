@@ -84,13 +84,13 @@ class MyKrakenState extends State<MyKrakenView> {
       // 坑呐！开启 DevToolService 会导致内存泄露
       // devToolsService: ChromeDevToolsService(),
       onLoadError: (FlutterError error, StackTrace stackTrace) {
-        print('onLoadError : ' + error.message);
+        print('onLoadError : ${error.message}');
       },
       onJSError: (String message) {
-        print('onJSError : ' + message);
+        print('onJSError : $message');
       },
       onLoad: (WebFController controller) {
-        currentBundleUrl = controller.url;
+        print('onLoad : ${controller.url}');
         int loadedTime = DateTime.now().millisecondsSinceEpoch;
         List<dynamic> data = [hasReload, loadedTime.toString()];
         if (hasReload) {
@@ -118,11 +118,12 @@ class MyKrakenState extends State<MyKrakenView> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   hasReload = true;
                   startReloadTime = DateTime.now().millisecondsSinceEpoch;
                   var switchBundleUrl = bundleSwitchMap[currentBundleUrl];
-                  kraken.load(WebFBundle.fromUrl(switchBundleUrl));
+                  await kraken.load(WebFBundle.fromUrl(switchBundleUrl));
+                  currentBundleUrl = switchBundleUrl;
                 },
                 child: const Text('Load Other Bundle'),
               ),
