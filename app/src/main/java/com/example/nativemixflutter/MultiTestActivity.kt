@@ -12,15 +12,15 @@ import io.flutter.embedding.android.FlutterView
 class MultiTestActivity : AppCompatActivity() {
 
     companion object {
-        const val MOUNT_OFFSET_X = 40
-        const val MOUNT_OFFSET_Y = 40
-        const val MOUNT_REUSE_OFFSET_X = 0
-        const val MOUNT_REUSE_OFFSET_Y = 500
-        const val CREATE_ENGINE_BY_GROUP = true
-        const val MOUNT_DIRTY_TYPE_FLUTTER = 1
-        const val MOUNT_DIRTY_TYPE_FLUTTER_CACHE = 2
-        const val MOUNT_DIRTY_TYPE_KRAKEN = 3
-        const val MOUNT_DIRTY_TYPE_KRAKEN_CACHE = 4
+        private const val MOUNT_OFFSET_X = 40
+        private const val MOUNT_OFFSET_Y = 40
+        private const val MOUNT_REUSE_OFFSET_X = 0
+        private const val MOUNT_REUSE_OFFSET_Y = 500
+        private const val CREATE_ENGINE_BY_GROUP = true
+        private const val MOUNT_DIRTY_TYPE_FLUTTER = 1
+        private const val MOUNT_DIRTY_TYPE_FLUTTER_CACHE = 2
+        private const val MOUNT_DIRTY_TYPE_KRAKEN = 3
+        private const val MOUNT_DIRTY_TYPE_KRAKEN_CACHE = 4
     }
 
     private lateinit var binding: ActivityMultiBinding
@@ -42,18 +42,18 @@ class MultiTestActivity : AppCompatActivity() {
         mountContainer = binding.mountContainer
         binding.addFlutterEngineBtn.setOnClickListener {
             FlutterUtil.createAndRunFlutterEngine(this, "default",
-                engineGroup = true,
-                cacheByPoint = false
+                useEngineGroup = true,
+                useCacheEngine = false
             )
         }
         binding.mountFlutterViewBtn.setOnClickListener {
             checkDirtyAndClean(MOUNT_DIRTY_TYPE_FLUTTER)
-            val flutterView = createFlutterView("default", false)
+            val flutterView = prepareFlutterView("default", false)
             addFlutterViewToContainer(flutterView, 600, 600, false)
         }
         binding.mountKrakenViewBtn.setOnClickListener {
             checkDirtyAndClean(MOUNT_DIRTY_TYPE_FLUTTER_CACHE)
-            val flutterView = createFlutterView("showKraken", false)
+            val flutterView = prepareFlutterView("showKraken", false)
             addFlutterViewToContainer(
                 flutterView,
                 DisplayUtil.dip2px(this, 320f),
@@ -63,12 +63,12 @@ class MultiTestActivity : AppCompatActivity() {
         }
         binding.mountReuseFlutterViewBtn.setOnClickListener {
             checkDirtyAndClean(MOUNT_DIRTY_TYPE_KRAKEN)
-            val flutterView = createFlutterView("default", true)
+            val flutterView = prepareFlutterView("default", true)
             addFlutterViewToContainer(flutterView, 600, 600, true)
         }
         binding.mountReuseKrakenViewBtn.setOnClickListener {
             checkDirtyAndClean(MOUNT_DIRTY_TYPE_KRAKEN_CACHE)
-            val flutterView = createFlutterView("showKraken", true)
+            val flutterView = prepareFlutterView("showKraken", true)
             addFlutterViewToContainer(
                 flutterView,
                 DisplayUtil.dip2px(this, 320f),
@@ -102,8 +102,10 @@ class MultiTestActivity : AppCompatActivity() {
         mountContainer.addView(flutterView, layoutParams)
     }
 
-    private fun createFlutterView(entryPoint: String, useCacheEngine: Boolean): FlutterView {
-        val view = FlutterUtil.createFlutterView(this, entryPoint, CREATE_ENGINE_BY_GROUP, useCacheEngine)
+    private fun prepareFlutterView(entryPoint: String, useCacheEngine: Boolean): FlutterView {
+        val view = FlutterUtil.createFlutterView(this, null)
+        val engine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint, CREATE_ENGINE_BY_GROUP, useCacheEngine)
+        FlutterUtil.attachFlutterViewToEngine(view, engine)
         mountFlutterCount++
         return view
     }
