@@ -11,9 +11,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.nativemixflutter.databinding.ActivitySingleBinding
 import com.example.nativemixflutter.util.DisplayUtil
-import io.flutter.FlutterInjector
+import com.example.nativemixflutter.util.FlutterUtil
 import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.android.FlutterTextureView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -21,7 +20,6 @@ import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 import io.flutter.plugin.common.MethodChannel
 import java.lang.StringBuilder
-
 
 class SingleTestActivity : AppCompatActivity() {
 
@@ -35,63 +33,43 @@ class SingleTestActivity : AppCompatActivity() {
         private const val FLUTTER_HANDLE_METHOD = "onNativeCall"
 
         private const val FLUTTER_ACTIVITY_CACHE_ENGINE = "flutter_activity_engine"
-
+        private const val CREATE_ENGINE_BY_GROUP = true
     }
 
     private lateinit var binding: ActivitySingleBinding
     private lateinit var mountViewContainer: FrameLayout
     private lateinit var statisticTimeTextView: TextView
 
-    private var flutterViewEngine: FlutterEngine? = null
     private var flutterView: FlutterView? = null
     private var flutterViewDisplayListener: FlutterUiDisplayListener? = null
     private var flutterViewMethodChannel: MethodChannel? = null
 
-    private var krakenViewEngine: FlutterEngine? = null
     private var krakenFlutterView: FlutterView? = null
     private var krakenViewDisplayListener: FlutterUiDisplayListener? = null
     private var krakenViewMethodChannel: MethodChannel? = null
 
     private var flutterActivityEngine: FlutterEngine? = null
+    private var flutterActivityMethodChannel: MethodChannel? = null
 
     //////////// 时间统计 /////////////
 
-    private var initEngineLostTime = 0L
     private var lostTime = 0L
     private var executeDartEntryPointStartTime = 0L
     private var executeDartEntryPointEndTime = 0L
     private var lostTimeInfo: StringBuilder = StringBuilder()
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySingleBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         initView()
-        initFlutter()
         initListener()
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
-        flutterViewEngine?.lifecycleChannel?.appIsResumed()
-        krakenViewEngine?.lifecycleChannel?.appIsResumed()
-        // Activity 不需要这步操作
-        flutterActivityEngine?.lifecycleChannel?.appIsResumed()
-    }
-
     override fun onDestroy() {
-        // FlutterView 不删除 Listener 也不会导致内存泄露
-        // flutterView?.removeOnFirstFrameRenderedListener(flutterViewDisplayListener!!)
-        flutterView?.detachFromFlutterEngine()
-        flutterViewEngine?.destroy()
-
-        // FlutterView 不删除 Listener 也不会导致内存泄露
-        // krakenFlutterView?.removeOnFirstFrameRenderedListener(krakenViewDisplayListener!!)
-        krakenFlutterView?.detachFromFlutterEngine()
-        krakenViewEngine?.destroy()
+        FlutterUtil.clearAllFlutterView(mountViewContainer)
+        FlutterUtil.destroyEngineCache()
+        FlutterUtil.destroyEngineGroup(this)
 
         FlutterEngineCache.getInstance().remove(FLUTTER_ACTIVITY_CACHE_ENGINE)
         FlutterEngineCache.getInstance().clear()
@@ -107,60 +85,10 @@ class SingleTestActivity : AppCompatActivity() {
         statisticTimeTextView.movementMethod = ScrollingMovementMethod.getInstance()
     }
 
-    private fun initFlutter() {
-        val start = curTime()
-        // Context 使用 application 不会导致内容泄露
-        flutterViewEngine = FlutterEngine(this)
-        krakenViewEngine = FlutterEngine(this)
-        flutterActivityEngine = FlutterEngine(this)
-        FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
-
-        val diff = calDiff(start)
-        initEngineLostTime = diff / 3
-    }
-
-    private fun createFlutterView(flutterView: FlutterView?, listener: FlutterUiDisplayListener): FlutterView {
-        if (flutterView != null) {
-            return flutterView
-        }
-
-        val start = curTime()
-
-        // Context 使用 application 不会导致内容泄露
-        val flutterTextureView = FlutterTextureView(this)
-        flutterTextureView.isOpaque = false
-        val view =  FlutterView(this, flutterTextureView)
-        view.addOnFirstFrameRenderedListener(listener)
-
-        val diff = calDiff(start)
-        updateLossTimeInfo("创建 FlutterView ：$diff" + "ms", diff)
-
-        view.tag = "Initialize"
-        return view
-    }
-
     private fun initListener() {
-
-        binding.nativeCallCrossBtn.setOnClickListener {
-            if (flutterView?.parent != null) {
-                flutterViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
-            } else if (krakenFlutterView?.parent != null) {
-                krakenViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
-            }
-        }
-
-        binding.routerToFlutterPageBtn.setOnClickListener {
-            if (flutterActivityEngine != null) {
-                // startActivity(FlutterActivity.createDefaultIntent(this))
-                createFlutterChannelAndInit(flutterViewMethodChannel, flutterActivityEngine!!, false)
-                flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
-                startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
-            }
-        }
 
         flutterViewDisplayListener = object :  FlutterUiDisplayListener {
             override fun onFlutterUiDisplayed() {
-                Log.d(TAG, "onFlutterUiDisplayed..." + this@SingleTestActivity)
                 executeDartEntryPointEndTime = System.currentTimeMillis()
                 val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                 updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
@@ -171,7 +99,6 @@ class SingleTestActivity : AppCompatActivity() {
 
         krakenViewDisplayListener = object : FlutterUiDisplayListener {
             override fun onFlutterUiDisplayed() {
-                Log.d(TAG, "onFlutterUiDisplayed...")
                 executeDartEntryPointEndTime = System.currentTimeMillis()
                 val diffTime = executeDartEntryPointEndTime - executeDartEntryPointStartTime
                 updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
@@ -179,40 +106,47 @@ class SingleTestActivity : AppCompatActivity() {
             override fun onFlutterUiNoLongerDisplayed() {}
         }
 
+        binding.nativeCallCrossBtn.setOnClickListener {
+            if (flutterView?.parent != null) {
+                flutterViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
+            } else if (krakenFlutterView?.parent != null) {
+                krakenViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
+            }
+        }
+
+        binding.routerToFlutterPageBtn.setOnClickListener {
+            if (flutterActivityEngine == null) {
+                flutterActivityEngine = FlutterEngine(this)
+                FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
+            }
+            // startActivity(FlutterActivity.createDefaultIntent(this))
+            flutterActivityMethodChannel = createFlutterChannelAndInit(flutterActivityEngine!!, false)
+            flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
+            startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
+        }
+
         initClickMyFlutterView()
         initClickMyKrakenView()
     }
 
     private fun initClickMyFlutterView() {
-
         // Flutter view click handler
         binding.mountFlutterViewBtn.setOnClickListener {
-
-            handleTimeInfoWhenClickMountView(flutterView)
-
+            resetLossTimeInfo()
             // 1. 初始化 Flutter View
             flutterView = createFlutterView(flutterView, flutterViewDisplayListener!!)
-
-            // 2. 初始化 Flutter & Native 的双向调用通道
-            flutterViewMethodChannel = createFlutterChannelAndInit(flutterViewMethodChannel, flutterViewEngine!!, true)
-
-            // 3. 将 FlutterView 添加到 Android View 容器
+            // 2. 将 FlutterView 添加到 Android View 容器
             addFlutterViewIntoContainer(flutterView!!, 600, 600)
-
-            // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(flutterView!!, flutterViewEngine!!)
-
-            // 5. FlutterEngine 执行自定义 EntryPoint
-            accessFlutterEngineEntryPoint(flutterViewEngine!!, "default")
+            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
+            val flutterEngine = prepareFlutterEngine("default")
+            // 4. 初始化 Flutter & Native 的双向调用通道
+            flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, true)
+            // 5. 将 FlutterView 和 FlutterEngine 进行关联
+            attachFlutterViewToEngine(flutterView!!, flutterEngine)
         }
     }
 
-    private fun createFlutterChannelAndInit(channel: MethodChannel?, engine: FlutterEngine, needStatistic: Boolean): MethodChannel {
-
-        if (channel != null) {
-            return channel
-        }
-
+    private fun createFlutterChannelAndInit(engine: FlutterEngine, needStatistic: Boolean): MethodChannel {
         val start = curTime()
 
         // Native MethodHandler 接收处理 Flutter 的方法调用
@@ -251,37 +185,70 @@ class SingleTestActivity : AppCompatActivity() {
     }
 
     private fun initClickMyKrakenView() {
-
         // Kraken view click handler
         binding.mountKrakenViewBtn.setOnClickListener {
-
-            handleTimeInfoWhenClickMountView(krakenFlutterView)
-
+            resetLossTimeInfo()
             // 1. 初始化 Flutter View
             krakenFlutterView = createFlutterView(krakenFlutterView, krakenViewDisplayListener!!)
-
-            // 2. 初始化 Flutter & Native 的双向调用通道
-            krakenViewMethodChannel = createKrakenChannelAndInit(krakenViewMethodChannel)
-
-            // 3. 将 FlutterView 添加到 Android View 容器
+            // 2. 将 FlutterView 添加到 Android View 容器
             addFlutterViewIntoContainer(krakenFlutterView!!,
                 DisplayUtil.dip2px(this, 320f),
                 DisplayUtil.dip2px(this, 480f)
             )
-
-            // 4. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(krakenFlutterView!!, krakenViewEngine!!)
-
-            // 5. FlutterEngine 执行自定义 EntryPoint
-            accessFlutterEngineEntryPoint(krakenViewEngine!!, "showKraken")
+            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
+            val flutterEngine = prepareFlutterEngine("showKraken")
+            // 4. 初始化 Flutter & Native 的双向调用通道
+            krakenViewMethodChannel = createKrakenChannelAndInit(flutterEngine)
+            // 5. 将 FlutterView 和 FlutterEngine 进行关联
+            attachFlutterViewToEngine(krakenFlutterView!!, flutterEngine)
         }
     }
 
-    private fun createKrakenChannelAndInit(channel: MethodChannel?) : MethodChannel {
-        if (channel != null) {
-            return channel
+    private fun createFlutterView(flutterView: FlutterView?, listener: FlutterUiDisplayListener): FlutterView {
+        if (flutterView != null) {
+            updateLossTimeInfo("复用 FlutterView ：0ms", 0)
+            return flutterView
         }
+        val start = curTime()
 
+        // Context 使用 application 不会导致内容泄露
+        val view = FlutterUtil.createFlutterView(this, listener)
+
+        val diff = calDiff(start)
+        updateLossTimeInfo("创建 FlutterView ：$diff" + "ms", diff)
+        view.tag = "Initialize"
+        return view
+    }
+
+    private fun prepareFlutterEngine(entryPoint: String) : FlutterEngine {
+        val engine = if (CREATE_ENGINE_BY_GROUP) {
+            val start = curTime()
+            executeDartEntryPointStartTime = start
+            val targetEngine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint,
+                useEngineGroup = true,
+                useCacheEngine = false
+            )
+            val diff = calDiff(start)
+            updateLossTimeInfo("创建 FlutterEngine 并执行 DartEntryPoint ：$diff" + "ms", diff)
+            targetEngine
+        } else {
+            var start = curTime()
+            val targetEngine = FlutterUtil.createFlutterEngine(this, entryPoint, false)
+            var diff = calDiff(start)
+            updateLossTimeInfo("创建 FlutterEngine ：$diff" + "ms", diff)
+
+            // 3-2. FlutterEngine 执行自定义 EntryPoint
+            start = curTime()
+            runFlutterEngineEntryPoint(targetEngine, entryPoint)
+            diff = calDiff(start)
+            updateLossTimeInfo("执行 DartEntryPoint ：$diff" + "ms", diff)
+
+            targetEngine
+        }
+        return engine
+    }
+
+    private fun createKrakenChannelAndInit(engine: FlutterEngine) : MethodChannel {
         val start = curTime()
         // Native MethodHandler 接收处理 Flutter 的方法调用
         val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
@@ -317,11 +284,12 @@ class SingleTestActivity : AppCompatActivity() {
                 }
             }
         }
-        val nativeMethodChannel = MethodChannel(krakenViewEngine!!.dartExecutor, NATIVE_METHOD_CHANNEL)
+
+        val nativeMethodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
         nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
 
         // 初始化 Native 调用 Flutter 的方法通道
-        val messenger = krakenViewEngine!!.dartExecutor.binaryMessenger
+        val messenger = engine.dartExecutor.binaryMessenger
         val flutterMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
 
         val diff = calDiff(start)
@@ -345,19 +313,17 @@ class SingleTestActivity : AppCompatActivity() {
 
     private fun attachFlutterViewToEngine(flutterView: FlutterView, flutterEngine: FlutterEngine) {
         val start = curTime()
-        flutterView.attachToFlutterEngine(flutterEngine)
+        FlutterUtil.attachFlutterViewToEngine(flutterView, flutterEngine)
         val diff = calDiff(start)
         updateLossTimeInfo("连接 FlutterView & FlutterEngine ：$diff" + "ms", diff)
     }
 
-    private fun accessFlutterEngineEntryPoint(engine: FlutterEngine, point: String) {
+    private fun runFlutterEngineEntryPoint(engine: FlutterEngine, point: String) {
         executeDartEntryPointStartTime = System.currentTimeMillis()
-        val dartPoint = if (point === "default") DartEntrypoint.createDefault() else DartEntrypoint(
-            FlutterInjector.instance().flutterLoader().findAppBundlePath(),
-            point
-        )
-        engine.dartExecutor.executeDartEntrypoint(dartPoint)
+        FlutterUtil.runFlutterEngineEntryPoint(engine, point)
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     private fun curTime(): Long {
         return System.currentTimeMillis()
@@ -365,13 +331,6 @@ class SingleTestActivity : AppCompatActivity() {
 
     private fun calDiff(start: Long): Long {
         return System.currentTimeMillis() - start
-    }
-
-    private fun handleTimeInfoWhenClickMountView(mountView: FlutterView?) {
-        resetLossTimeInfo()
-        if (mountView?.tag == null) {
-            updateLossTimeInfo("初始化 FlutterEngine ：$initEngineLostTime" + "ms", initEngineLostTime)
-        }
     }
 
     private fun resetLossTimeInfo() {
