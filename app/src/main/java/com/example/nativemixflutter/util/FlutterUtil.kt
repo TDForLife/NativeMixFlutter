@@ -10,66 +10,116 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.FlutterEngineGroup
 import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 
 class FlutterUtil private constructor() {
     companion object {
 
         /**
-         * 构建 FlutterView
-         * @param entryPoint 指定 DartEntryPoint
-         * @param useCacheEngine 是否使用 FlutterEngineGroup 创建 FlutterEngine
-         * @param useCacheEngine 是否复用 FlutterEngineCache
+         * 创建 FlutterView
          */
-        fun createFlutterView(context: Context, entryPoint: String, useEngineGroup: Boolean, useCacheEngine: Boolean): FlutterView {
+        fun createFlutterView(context: Context,
+                              displayListener: FlutterUiDisplayListener?) : FlutterView {
             val flutterTextureView = FlutterTextureView(context)
             flutterTextureView.isOpaque = false
-            val view = FlutterView(context, flutterTextureView)
-
-            var flutterEngine: FlutterEngine? = null
-            if (useCacheEngine) {
-                val target = FlutterEngineCache.getInstance().get(entryPoint)
-                flutterEngine = target
+            val flutterView = FlutterView(context, flutterTextureView)
+            if (displayListener != null) {
+                // FlutterView 不删除 Listener 也不会导致内存泄露
+                // flutterView.removeOnFirstFrameRenderedListener(displayListener)
+                flutterView.addOnFirstFrameRenderedListener(displayListener)
             }
-            if (flutterEngine == null) {
-                flutterEngine = createAndRunFlutterEngine(context, entryPoint, useEngineGroup, useCacheEngine)
-            }
-
-            flutterEngine.lifecycleChannel.appIsResumed()
-
-            view.attachToFlutterEngine(flutterEngine)
-            return view
+            return flutterView
         }
 
         /**
-         * 创建并运行 FlutterEngine
+         * 创建 FlutterEngine
          * @param entryPoint 指定 DartEntryPoint
-         * @param engineGroup 是否使用 FlutterEngineGroup 创建 FlutterEngine
-         * @param cacheByPoint 是否缓存 FlutterEngine 到 FlutterEngineCache
+         * @param useCacheEngine 是否缓存 FlutterEngine 到 FlutterEngineCache
          */
-        fun createAndRunFlutterEngine(
+        fun createFlutterEngine(
             context: Context,
             entryPoint: String,
-            engineGroup: Boolean,
-            cacheByPoint: Boolean
-        ): FlutterEngine {
-            val dartPoint = if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
-                FlutterInjector.instance().flutterLoader().findAppBundlePath(),
-                entryPoint
-            )
-            val engine = if (engineGroup) {
-                val app = context.applicationContext as App
-                app.createAndRunFlutterEngine(context, dartPoint)
+            useCacheEngine: Boolean) : FlutterEngine {
+            val dartPoint = createDartEntryPoint(entryPoint)
+            val engine = if (useCacheEngine) {
+                var target = FlutterEngineCache.getInstance().get(entryPoint)
+                if (target == null) {
+                    target = FlutterEngine(context)
+                    target.dartExecutor.executeDartEntrypoint(dartPoint)
+                }
+                target
             } else {
                 val flutterEngine = FlutterEngine(context)
                 flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
                 flutterEngine
             }
-            if (cacheByPoint) {
+            if (useCacheEngine) {
                 FlutterEngineCache.getInstance().put(entryPoint, engine)
             }
             return engine
         }
 
+        /**
+         * 创建 FlutterEngine 并执行 DartEntryPoint
+         * @param entryPoint 指定 DartEntryPoint
+         * @param useEngineGroup 是否使用 FlutterEngineGroup 创建 FlutterEngine
+         * @param useCacheEngine 是否缓存 FlutterEngine 到 FlutterEngineCache
+         */
+        fun createAndRunFlutterEngine(
+            context: Context,
+            entryPoint: String,
+            useEngineGroup: Boolean,
+            useCacheEngine: Boolean
+        ): FlutterEngine {
+            val dartPoint = createDartEntryPoint(entryPoint)
+            val engine = if (useEngineGroup) {
+                val app = context.applicationContext as App
+                app.createAndRunFlutterEngine(context, dartPoint)
+            } else if (useCacheEngine) {
+                var target = FlutterEngineCache.getInstance().get(entryPoint)
+                if (target == null) {
+                    target = FlutterEngine(context)
+                    target.dartExecutor.executeDartEntrypoint(dartPoint)
+                }
+                target
+            } else {
+                val flutterEngine = FlutterEngine(context)
+                flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
+                flutterEngine
+            }
+            if (useCacheEngine) {
+                FlutterEngineCache.getInstance().put(entryPoint, engine)
+            }
+            return engine
+        }
+
+        /**
+         * 创建 DartEntryPoint
+         */
+        private fun createDartEntryPoint(entryPoint: String) : DartExecutor.DartEntrypoint {
+            return if (entryPoint === "default") DartExecutor.DartEntrypoint.createDefault() else DartExecutor.DartEntrypoint(
+                FlutterInjector.instance().flutterLoader().findAppBundlePath(),
+                entryPoint
+            )
+        }
+
+        /**
+         * 执行 DartEntryPoint
+         */
+        fun runFlutterEngineEntryPoint(engine: FlutterEngine, point: String) {
+            val dartPoint = createDartEntryPoint(point)
+            engine.dartExecutor.executeDartEntrypoint(dartPoint)
+        }
+
+        /**
+         * 连接 FlutterView and FlutterEngine
+         */
+        fun attachFlutterViewToEngine(view: FlutterView, engine: FlutterEngine) {
+            // 必须添加对 lifeCycle 的监听，继而执行 appIsResumed，否则 Flutter Kraken 不会刷新
+            // Activity 的 FlutterEngine 不需要这步操作
+            engine.lifecycleChannel.appIsResumed()
+            view.attachToFlutterEngine(engine)
+        }
 
         fun clearAllFlutterView(container: ViewGroup) {
             for (childIndex in 0..container.childCount) {
