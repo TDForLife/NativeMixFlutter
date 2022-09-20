@@ -120,7 +120,8 @@ class SingleTestActivity : AppCompatActivity() {
                 FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
             }
             // startActivity(FlutterActivity.createDefaultIntent(this))
-            flutterActivityMethodChannel = createFlutterChannelAndInit(flutterActivityEngine!!, false)
+            flutterActivityMethodChannel = createFlutterChannelAndInit(flutterActivityEngine!!,
+                createFlutterViewMethodCallHandler(), false)
             flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
             startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
         }
@@ -140,16 +141,13 @@ class SingleTestActivity : AppCompatActivity() {
             // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
             val flutterEngine = prepareFlutterEngine("default")
             // 4. 初始化 Flutter & Native 的双向调用通道
-            flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, true)
+            flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createFlutterViewMethodCallHandler(),true)
             // 5. 将 FlutterView 和 FlutterEngine 进行关联
             attachFlutterViewToEngine(flutterView!!, flutterEngine)
         }
     }
 
-    private fun createFlutterChannelAndInit(engine: FlutterEngine, needStatistic: Boolean): MethodChannel {
-        val start = curTime()
-
-        // Native MethodHandler 接收处理 Flutter 的方法调用
+    private fun createFlutterViewMethodCallHandler() : MethodChannel.MethodCallHandler {
         val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
             run {
                 Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
@@ -170,18 +168,7 @@ class SingleTestActivity : AppCompatActivity() {
                 }
             }
         }
-        val nativeMethodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
-        nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
-
-        // 初始化 Native 调用 Flutter 的方法通道
-        val messenger = engine.dartExecutor.binaryMessenger
-        val methodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
-
-        val diff = calDiff(start)
-        if (needStatistic) {
-            updateLossTimeInfo("构建 Flutter MethodChannel：$diff" + "ms", diff)
-        }
-        return methodChannel
+        return nativeMethodHandler
     }
 
     private fun initClickMyKrakenView() {
@@ -198,10 +185,47 @@ class SingleTestActivity : AppCompatActivity() {
             // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
             val flutterEngine = prepareFlutterEngine("showKraken")
             // 4. 初始化 Flutter & Native 的双向调用通道
-            krakenViewMethodChannel = createKrakenChannelAndInit(flutterEngine)
+            krakenViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createKrakenViewMethodCallHandler(), true)
             // 5. 将 FlutterView 和 FlutterEngine 进行关联
             attachFlutterViewToEngine(krakenFlutterView!!, flutterEngine)
         }
+    }
+
+    private fun createKrakenViewMethodCallHandler() : MethodChannel.MethodCallHandler {
+        val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
+            run {
+                Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
+                if (call.method.equals(NATIVE_HANDLE_METHOD)) {
+
+                    // 跨平台调用耗时统计
+                    resetLossTimeInfo()
+                    val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
+                    updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
+
+                    val toast = Toast.makeText(this@SingleTestActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
+                    toast.setGravity(Gravity.CENTER, 0, 350)
+                    toast.show()
+                    mountViewContainer.postDelayed({
+                        result.success("OK, I am Android Boss")
+                    }, 1000)
+                } else if (call.method.equals(NATIVE_HANDLE_LOADED_METHOD)) {
+                    val data = call.arguments as List<*>
+                    val isReload = data[0] as Boolean
+                    if (isReload) {
+                        resetLossTimeInfo()
+                        val diff = System.currentTimeMillis() - (data[1] as String).toLong()
+                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                    } else {
+                        val diff = (data[1] as String).toLong() - executeDartEntryPointEndTime
+                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
+                    }
+                    updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
+                } else {
+                    result.notImplemented()
+                }
+            }
+        }
+        return nativeMethodHandler
     }
 
     private fun createFlutterView(flutterView: FlutterView?, listener: FlutterUiDisplayListener): FlutterView {
@@ -248,54 +272,23 @@ class SingleTestActivity : AppCompatActivity() {
         return engine
     }
 
-    private fun createKrakenChannelAndInit(engine: FlutterEngine) : MethodChannel {
+    private fun createFlutterChannelAndInit(engine: FlutterEngine,
+                                            handler: MethodChannel.MethodCallHandler,
+                                            needStatistic: Boolean): MethodChannel {
         val start = curTime()
+
         // Native MethodHandler 接收处理 Flutter 的方法调用
-        val nativeMethodHandler = MethodChannel.MethodCallHandler { call, result ->
-            run {
-                Log.d(TAG, "Android | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments)
-                if (call.method.equals(NATIVE_HANDLE_METHOD)) {
-
-                    // 跨平台调用耗时统计
-                    resetLossTimeInfo()
-                    val diffTime = calDiff(((call.arguments as List<*>)[0] as String).toLong())
-                    updateLossTimeInfo("Native 接收到 JS Call 的通信耗时：$diffTime" + "ms", -1)
-
-                    val toast = Toast.makeText(this@SingleTestActivity, call.arguments.toString(), Toast.LENGTH_SHORT)
-                    toast.setGravity(Gravity.CENTER, 0, 350)
-                    toast.show()
-                    mountViewContainer.postDelayed({
-                        result.success("OK, I am Android Boss")
-                    }, 1000)
-                } else if (call.method.equals(NATIVE_HANDLE_LOADED_METHOD)) {
-                    val data = call.arguments as List<*>
-                    val isReload = data[0] as Boolean
-                    if (isReload) {
-                        resetLossTimeInfo()
-                        val diff = System.currentTimeMillis() - (data[1] as String).toLong()
-                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
-                    } else {
-                        val diff = (data[1] as String).toLong() - executeDartEntryPointEndTime
-                        updateLossTimeInfo("加载 JS 组件：$diff" + "ms", diff)
-                    }
-                    updateLossTimeInfo("总耗时 ：$lostTime" + "ms", -1)
-                } else {
-                    result.notImplemented()
-                }
-            }
-        }
-
         val nativeMethodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
-        nativeMethodChannel.setMethodCallHandler(nativeMethodHandler)
-
+        nativeMethodChannel.setMethodCallHandler(handler)
         // 初始化 Native 调用 Flutter 的方法通道
         val messenger = engine.dartExecutor.binaryMessenger
-        val flutterMethodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
+        val methodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
 
         val diff = calDiff(start)
-        updateLossTimeInfo("构建 Flutter MethodChannel：$diff" + "ms", diff)
-
-        return flutterMethodChannel
+        if (needStatistic) {
+            updateLossTimeInfo("构建 Flutter MethodChannel：$diff" + "ms", diff)
+        }
+        return methodChannel
     }
 
     private fun addFlutterViewIntoContainer(flutterView: FlutterView, viewWidth: Int, viewHeight: Int) {
