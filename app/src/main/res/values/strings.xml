@@ -19,4 +19,5 @@
     <string name="access_single_test">进入单视图测试</string>
     <string name="access_multi_test">进入多视图测试</string>
     <string name="add_flutter_engine">纯粹添加 FlutterEngine into Group</string>
+    <string name="flutter_engine_share_mode">Engine 共享</string>
 </resources>

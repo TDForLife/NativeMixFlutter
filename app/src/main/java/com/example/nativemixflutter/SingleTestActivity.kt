@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.Gravity
+import android.widget.CheckBox
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -33,12 +34,12 @@ class SingleTestActivity : AppCompatActivity() {
         private const val FLUTTER_HANDLE_METHOD = "onNativeCall"
 
         private const val FLUTTER_ACTIVITY_CACHE_ENGINE = "flutter_activity_engine"
-        private const val CREATE_ENGINE_BY_GROUP = true
     }
 
     private lateinit var binding: ActivitySingleBinding
     private lateinit var mountViewContainer: FrameLayout
     private lateinit var statisticTimeTextView: TextView
+    private lateinit var flutterEngineShareCheckBox: CheckBox
 
     private var flutterView: FlutterView? = null
     private var flutterViewDisplayListener: FlutterUiDisplayListener? = null
@@ -63,7 +64,8 @@ class SingleTestActivity : AppCompatActivity() {
         binding = ActivitySingleBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initView()
-        initListener()
+        initClickListener()
+        initFlutterUiDisplayListener()
     }
 
     override fun onDestroy() {
@@ -83,10 +85,66 @@ class SingleTestActivity : AppCompatActivity() {
         mountViewContainer = findViewById(R.id.mount_container)
         statisticTimeTextView = binding.statisticTimeTv
         statisticTimeTextView.movementMethod = ScrollingMovementMethod.getInstance()
+        flutterEngineShareCheckBox = binding.flutterEngineShareCb
     }
 
-    private fun initListener() {
+    private fun initClickListener() {
 
+        // Flutter view click handler
+        binding.mountFlutterViewBtn.setOnClickListener {
+            resetLossTimeInfo()
+            // 1. 初始化 Flutter View
+            flutterView = createFlutterView(flutterView, flutterViewDisplayListener!!)
+            // 2. 将 FlutterView 添加到 Android View 容器
+            addFlutterViewIntoContainer(flutterView!!, 600, 600)
+            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
+            val flutterEngine = prepareFlutterEngine("default")
+            // 4. 初始化 Flutter & Native 的双向调用通道
+            flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createFlutterViewMethodCallHandler(),true)
+            // 5. 将 FlutterView 和 FlutterEngine 进行关联
+            attachFlutterViewToEngine(flutterView!!, flutterEngine)
+        }
+
+        // Kraken view click handler
+        binding.mountKrakenViewBtn.setOnClickListener {
+            resetLossTimeInfo()
+            // 1. 初始化 Flutter View
+            krakenFlutterView = createFlutterView(krakenFlutterView, krakenViewDisplayListener!!)
+            // 2. 将 FlutterView 添加到 Android View 容器
+            addFlutterViewIntoContainer(krakenFlutterView!!,
+                DisplayUtil.dip2px(this, 320f),
+                DisplayUtil.dip2px(this, 480f)
+            )
+            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
+            val flutterEngine = prepareFlutterEngine("showKraken")
+            // 4. 初始化 Flutter & Native 的双向调用通道
+            krakenViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createKrakenViewMethodCallHandler(), true)
+            // 5. 将 FlutterView 和 FlutterEngine 进行关联
+            attachFlutterViewToEngine(krakenFlutterView!!, flutterEngine)
+        }
+
+        binding.nativeCallCrossBtn.setOnClickListener {
+            if (flutterView?.parent != null) {
+                flutterViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
+            } else if (krakenFlutterView?.parent != null) {
+                krakenViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
+            }
+        }
+
+        binding.routerToFlutterPageBtn.setOnClickListener {
+            if (flutterActivityEngine == null) {
+                flutterActivityEngine = FlutterEngine(this)
+                FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
+            }
+            // startActivity(FlutterActivity.createDefaultIntent(this))
+            flutterActivityMethodChannel = createFlutterChannelAndInit(flutterActivityEngine!!, 
+                createFlutterViewMethodCallHandler(), false)
+            flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
+            startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
+        }
+    }
+
+    private fun initFlutterUiDisplayListener() {
         flutterViewDisplayListener = object :  FlutterUiDisplayListener {
             override fun onFlutterUiDisplayed() {
                 executeDartEntryPointEndTime = System.currentTimeMillis()
@@ -104,46 +162,6 @@ class SingleTestActivity : AppCompatActivity() {
                 updateLossTimeInfo("执行 Dart Entrypoint 渲染 UI：$diffTime" + "ms", diffTime)
             }
             override fun onFlutterUiNoLongerDisplayed() {}
-        }
-
-        binding.nativeCallCrossBtn.setOnClickListener {
-            if (flutterView?.parent != null) {
-                flutterViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Hi Flutter, please plus 1")
-            } else if (krakenFlutterView?.parent != null) {
-                krakenViewMethodChannel?.invokeMethod(FLUTTER_HANDLE_METHOD, "Native invoker")
-            }
-        }
-
-        binding.routerToFlutterPageBtn.setOnClickListener {
-            if (flutterActivityEngine == null) {
-                flutterActivityEngine = FlutterEngine(this)
-                FlutterEngineCache.getInstance().put(FLUTTER_ACTIVITY_CACHE_ENGINE, flutterActivityEngine)
-            }
-            // startActivity(FlutterActivity.createDefaultIntent(this))
-            flutterActivityMethodChannel = createFlutterChannelAndInit(flutterActivityEngine!!,
-                createFlutterViewMethodCallHandler(), false)
-            flutterActivityEngine!!.dartExecutor.executeDartEntrypoint(DartEntrypoint.createDefault())
-            startActivity(FlutterActivity.withCachedEngine(FLUTTER_ACTIVITY_CACHE_ENGINE).build(this))
-        }
-
-        initClickMyFlutterView()
-        initClickMyKrakenView()
-    }
-
-    private fun initClickMyFlutterView() {
-        // Flutter view click handler
-        binding.mountFlutterViewBtn.setOnClickListener {
-            resetLossTimeInfo()
-            // 1. 初始化 Flutter View
-            flutterView = createFlutterView(flutterView, flutterViewDisplayListener!!)
-            // 2. 将 FlutterView 添加到 Android View 容器
-            addFlutterViewIntoContainer(flutterView!!, 600, 600)
-            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
-            val flutterEngine = prepareFlutterEngine("default")
-            // 4. 初始化 Flutter & Native 的双向调用通道
-            flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createFlutterViewMethodCallHandler(),true)
-            // 5. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(flutterView!!, flutterEngine)
         }
     }
 
@@ -169,26 +187,6 @@ class SingleTestActivity : AppCompatActivity() {
             }
         }
         return nativeMethodHandler
-    }
-
-    private fun initClickMyKrakenView() {
-        // Kraken view click handler
-        binding.mountKrakenViewBtn.setOnClickListener {
-            resetLossTimeInfo()
-            // 1. 初始化 Flutter View
-            krakenFlutterView = createFlutterView(krakenFlutterView, krakenViewDisplayListener!!)
-            // 2. 将 FlutterView 添加到 Android View 容器
-            addFlutterViewIntoContainer(krakenFlutterView!!,
-                DisplayUtil.dip2px(this, 320f),
-                DisplayUtil.dip2px(this, 480f)
-            )
-            // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
-            val flutterEngine = prepareFlutterEngine("showKraken")
-            // 4. 初始化 Flutter & Native 的双向调用通道
-            krakenViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createKrakenViewMethodCallHandler(), true)
-            // 5. 将 FlutterView 和 FlutterEngine 进行关联
-            attachFlutterViewToEngine(krakenFlutterView!!, flutterEngine)
-        }
     }
 
     private fun createKrakenViewMethodCallHandler() : MethodChannel.MethodCallHandler {
@@ -224,7 +222,7 @@ class SingleTestActivity : AppCompatActivity() {
                     result.notImplemented()
                 }
             }
-        }
+        } 
         return nativeMethodHandler
     }
 
@@ -245,7 +243,8 @@ class SingleTestActivity : AppCompatActivity() {
     }
 
     private fun prepareFlutterEngine(entryPoint: String) : FlutterEngine {
-        val engine = if (CREATE_ENGINE_BY_GROUP) {
+        Log.d("zzz", "isChecked : ${flutterEngineShareCheckBox.isChecked}")
+        val engine = if (flutterEngineShareCheckBox.isChecked) {
             val start = curTime()
             executeDartEntryPointStartTime = start
             val targetEngine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint,
