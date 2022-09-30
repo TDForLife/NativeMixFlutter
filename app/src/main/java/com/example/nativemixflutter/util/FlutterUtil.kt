@@ -68,13 +68,14 @@ class FlutterUtil private constructor() {
         fun createAndRunFlutterEngine(
             context: Context,
             entryPoint: String,
+            entrypointArgs: List<String>?,
             useEngineGroup: Boolean,
             useCacheEngine: Boolean
         ): FlutterEngine {
             val dartPoint = createDartEntryPoint(entryPoint)
             val engine = if (useEngineGroup) {
                 val app = context.applicationContext as App
-                app.createAndRunFlutterEngine(context, dartPoint)
+                app.createAndRunFlutterEngine(context, dartPoint, entrypointArgs)
             } else if (useCacheEngine) {
                 var target = FlutterEngineCache.getInstance().get(entryPoint)
                 if (target == null) {
@@ -84,7 +85,7 @@ class FlutterUtil private constructor() {
                 target
             } else {
                 val flutterEngine = FlutterEngine(context)
-                flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint)
+                flutterEngine.dartExecutor.executeDartEntrypoint(dartPoint, entrypointArgs)
                 flutterEngine
             }
             if (useCacheEngine) {

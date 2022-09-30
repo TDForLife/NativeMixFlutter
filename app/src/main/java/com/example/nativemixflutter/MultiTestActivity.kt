@@ -41,7 +41,7 @@ class MultiTestActivity : AppCompatActivity() {
     private fun initView() {
         mountContainer = binding.mountContainer
         binding.addFlutterEngineBtn.setOnClickListener {
-            FlutterUtil.createAndRunFlutterEngine(this, "default",
+            FlutterUtil.createAndRunFlutterEngine(this, "default", null,
                 useEngineGroup = true,
                 useCacheEngine = false
             )
@@ -104,7 +104,13 @@ class MultiTestActivity : AppCompatActivity() {
 
     private fun prepareFlutterView(entryPoint: String, useCacheEngine: Boolean): FlutterView {
         val view = FlutterUtil.createFlutterView(this, null)
-        val engine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint, CREATE_ENGINE_BY_GROUP, useCacheEngine)
+        val engine = FlutterUtil.createAndRunFlutterEngine(
+            this,
+            entryPoint,
+            mutableListOf("MultiTestActivity"),
+            CREATE_ENGINE_BY_GROUP,
+            useCacheEngine
+        )
         FlutterUtil.attachFlutterViewToEngine(view, engine)
         mountFlutterCount++
         return view

@@ -29,8 +29,6 @@ class SingleTestActivity : AppCompatActivity() {
         private const val NATIVE_METHOD_CHANNEL = "yob.native.io/method"
         private const val NATIVE_HANDLE_METHOD = "onFlutterCall"
         private const val NATIVE_HANDLE_LOADED_METHOD = "onFlutterLoadedCall"
-
-        private const val FLUTTER_METHOD_CHANNEL = "yob.flutter.io/method"
         private const val FLUTTER_HANDLE_METHOD = "onNativeCall"
 
         private const val FLUTTER_ACTIVITY_CACHE_ENGINE = "flutter_activity_engine"
@@ -98,7 +96,7 @@ class SingleTestActivity : AppCompatActivity() {
             // 2. 将 FlutterView 添加到 Android View 容器
             addFlutterViewIntoContainer(flutterView!!, 600, 600)
             // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
-            val flutterEngine = prepareFlutterEngine("default")
+            val flutterEngine = prepareFlutterEngine("default", mutableListOf("SingleTestActivity"))
             // 4. 初始化 Flutter & Native 的双向调用通道
             flutterViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createFlutterViewMethodCallHandler(),true)
             // 5. 将 FlutterView 和 FlutterEngine 进行关联
@@ -116,7 +114,7 @@ class SingleTestActivity : AppCompatActivity() {
                 DisplayUtil.dip2px(this, 480f)
             )
             // 3. 创建 FlutterEngine（使用 FlutterEngineGroup 的时候会自动执行 DartEntryPoint）
-            val flutterEngine = prepareFlutterEngine("showKraken")
+            val flutterEngine = prepareFlutterEngine("showKraken", mutableListOf("SingleTestActivity"))
             // 4. 初始化 Flutter & Native 的双向调用通道
             krakenViewMethodChannel = createFlutterChannelAndInit(flutterEngine, createKrakenViewMethodCallHandler(), true)
             // 5. 将 FlutterView 和 FlutterEngine 进行关联
@@ -242,12 +240,11 @@ class SingleTestActivity : AppCompatActivity() {
         return view
     }
 
-    private fun prepareFlutterEngine(entryPoint: String) : FlutterEngine {
-        Log.d("zzz", "isChecked : ${flutterEngineShareCheckBox.isChecked}")
+    private fun prepareFlutterEngine(entryPoint: String, entrypointArgs: List<String>?) : FlutterEngine {
         val engine = if (flutterEngineShareCheckBox.isChecked) {
             val start = curTime()
             executeDartEntryPointStartTime = start
-            val targetEngine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint,
+            val targetEngine = FlutterUtil.createAndRunFlutterEngine(this, entryPoint, entrypointArgs,
                 useEngineGroup = true,
                 useCacheEngine = false
             )
@@ -276,12 +273,9 @@ class SingleTestActivity : AppCompatActivity() {
                                             needStatistic: Boolean): MethodChannel {
         val start = curTime()
 
-        // Native MethodHandler 接收处理 Flutter 的方法调用
-        val nativeMethodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
-        nativeMethodChannel.setMethodCallHandler(handler)
-        // 初始化 Native 调用 Flutter 的方法通道
-        val messenger = engine.dartExecutor.binaryMessenger
-        val methodChannel = MethodChannel(messenger, FLUTTER_METHOD_CHANNEL)
+        // 初始化 Native & Flutter 的方法通道
+        val methodChannel = MethodChannel(engine.dartExecutor, NATIVE_METHOD_CHANNEL)
+        methodChannel.setMethodCallHandler(handler)
 
         val diff = calDiff(start)
         if (needStatistic) {

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineGroup
+import io.flutter.embedding.engine.FlutterEngineGroup.Options
 import io.flutter.embedding.engine.dart.DartExecutor
 
 /**
@@ -19,7 +20,10 @@ class App : Application() {
         engines = FlutterEngineGroup(this)
     }
 
-    fun createAndRunFlutterEngine(context: Context, entrypoint: DartExecutor.DartEntrypoint) : FlutterEngine {
-        return engines.createAndRunEngine(context, entrypoint)
+    fun createAndRunFlutterEngine(context: Context,
+                                  entrypoint: DartExecutor.DartEntrypoint,
+                                  entrypointArgs: List<String>?) : FlutterEngine {
+        val option = Options(context).setDartEntrypoint(entrypoint).setDartEntrypointArgs(entrypointArgs)
+        return engines.createAndRunEngine(option)
     }
 }
