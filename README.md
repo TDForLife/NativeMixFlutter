@@ -1,3 +1,5 @@
+### 详情可见：[Android 动态加载 JS — Flutter Kraken](https://juejin.cn/post/7145699631609954335/)
+
 ### 如何运行
 
 执行以下命令，生成 Flutter 模块的 .android 目录
