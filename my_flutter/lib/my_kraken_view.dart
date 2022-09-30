@@ -9,7 +9,6 @@ import 'package:webf/webf.dart';
 const nativeMethodChannelName = 'yob.native.io/method';
 const nativeMethodName = 'onFlutterCall';
 const nativeLoadedMethodName = 'onFlutterLoadedCall';
-const krakenMethodChannelName = 'yob.flutter.io/method';
 const krakenMethodName = 'onNativeCall';
 const jsMethodName = 'onJSCall';
 
@@ -24,7 +23,6 @@ class MyKrakenView extends StatefulWidget {
 class MyKrakenState extends State<MyKrakenView> {
   static const logTag = 'Kraken';
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
-  static const krakenMethodChannel = MethodChannel(krakenMethodChannelName);
 
   static const bundleUrl = 'assets:///jss/bundle.js';
   static const partBundleUrl = 'assets:///jss/bundle-part.js';
@@ -52,7 +50,7 @@ class MyKrakenState extends State<MyKrakenView> {
   }
 
   _initKrakenChannel() {
-    krakenMethodChannel.setMethodCallHandler((call) async {
+    nativeMethodChannel.setMethodCallHandler((call) async {
       print("Kraken | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments);
       return _invokeJSMethodProxy(call.method, call.arguments);
     });

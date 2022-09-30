@@ -12,13 +12,11 @@ class MyFlutterView extends StatefulWidget {
 
 const nativeMethodChannelName = 'yob.native.io/method';
 const nativeMethodName = 'onFlutterCall';
-const flutterMethodChannelName = 'yob.flutter.io/method';
 const flutterMethodName = 'onNativeCall';
 
 class _MyFlutterViewState extends State<MyFlutterView> {
 
   static const nativeMethodChannel = MethodChannel(nativeMethodChannelName);
-  static const flutterMethodChannel = MethodChannel(flutterMethodChannelName);
 
   var nativeResult = '1';
   var nativeRequestCount = 0;
@@ -27,7 +25,7 @@ class _MyFlutterViewState extends State<MyFlutterView> {
   @override
   void initState() {
     super.initState();
-    flutterMethodChannel.setMethodCallHandler((call) async {
+    nativeMethodChannel.setMethodCallHandler((call) async {
       print("Flutter | MethodCallHandler  [ " + call.method + " ] called and params is : " + call.arguments);
       switch(call.method) {
         case flutterMethodName:
